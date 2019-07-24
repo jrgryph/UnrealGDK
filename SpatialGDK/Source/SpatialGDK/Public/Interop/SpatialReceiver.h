@@ -143,6 +143,7 @@ public:
 
 	void AddServerPingDelegate(Worker_EntityId EntityId, ServerPingDelegate Delegate);
 	void AddClientPongDelegate(Worker_EntityId EntityId, ClientPongDelegate Delegate);
+	void RemoveClientPongDelegate(Worker_EntityId EntityId);
 
 	void OnEntityQueryResponse(const Worker_EntityQueryResponseOp& Op);
 

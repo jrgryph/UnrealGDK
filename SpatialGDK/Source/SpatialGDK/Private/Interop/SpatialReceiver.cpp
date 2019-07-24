@@ -1,4 +1,5 @@
 // Copyright (c) Improbable Worlds Ltd, All Rights Reserved
+#pragma optimize("", off)
 
 #include "Interop/SpatialReceiver.h"
 
@@ -268,10 +269,6 @@ void USpatialReceiver::HandlePlayerLifecycleAuthority(const Worker_AuthorityChan
 		}
 		else if (Op.authority == WORKER_AUTHORITY_NOT_AUTHORITATIVE)
 		{
-			if (bIsServer)
-			{
-				ClientPongDelegates.Remove(Op.entity_id);
-			}
 			if (Connection != nullptr)
 			{
 				Connection->DisableLatencyManager();
@@ -1641,6 +1638,11 @@ void USpatialReceiver::AddServerPingDelegate(Worker_EntityId EntityId, ServerPin
 void USpatialReceiver::AddClientPongDelegate(Worker_EntityId EntityId, ClientPongDelegate Delegate)
 {
 	ClientPongDelegates.Add(EntityId, Delegate);
+}
+
+void USpatialReceiver::RemoveClientPongDelegate(Worker_EntityId EntityId)
+{
+	ClientPongDelegates.Remove(EntityId);
 }
 
 TWeakObjectPtr<USpatialActorChannel> USpatialReceiver::PopPendingActorRequest(Worker_RequestId RequestId)

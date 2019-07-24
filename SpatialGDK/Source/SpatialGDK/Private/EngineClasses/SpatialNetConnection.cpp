@@ -31,6 +31,14 @@ void USpatialNetConnection::BeginDestroy()
 {
 	DisableHeartbeat();
 
+	if (ConnectionLatencyManager != nullptr)
+	{
+		DisableLatencyManager();
+
+		delete ConnectionLatencyManager;
+		ConnectionLatencyManager = nullptr;
+	}
+	
 	Super::BeginDestroy();
 }
 
@@ -211,7 +219,7 @@ void USpatialNetConnection::SetupLatencyManager(Worker_EntityId InPlayerControll
 {
 	if (ConnectionLatencyManager == nullptr)
 	{
-		ConnectionLatencyManager = new LatencyManager(*this, *Cast<USpatialNetDriver>(Driver));
+		ConnectionLatencyManager = NewObject<ULatencyManager>(*this, *Cast<USpatialNetDriver>(Driver));
 	}
 
 	ConnectionLatencyManager->Enable(InPlayerControllerEntity);

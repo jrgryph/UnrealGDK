@@ -66,7 +66,8 @@ public:
 	Worker_EntityId PlayerControllerEntity;
 	FTimerHandle HeartbeatTimer;
 
-	LatencyManager* ConnectionLatencyManager;
+	UPROPERTY()
+	ULatencyManager* ConnectionLatencyManager;
 
 	void SetupLatencyManager(Worker_EntityId InPlayerControllerEntity);
 	void DisableLatencyManager();

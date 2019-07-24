@@ -7,10 +7,11 @@
 class USpatialNetConnection;
 class USpatialNetDriver;
 
-class LatencyManager
+UCLASS()
+class ULatencyManager : public UObject 
 {
 public:
-	LatencyManager(const USpatialNetConnection& InConnection, const USpatialNetDriver& InDriver);
+	ULatencyManager(const USpatialNetConnection& InConnection, const USpatialNetDriver& InDriver);
 
 	void Enable(Worker_EntityId InPlayerControllerEntity);
 	void Disable();
