@@ -7,6 +7,7 @@
 #include "Net/RepLayout.h"
 #include "UObject/TextProperty.h"
 
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialFastArrayNetSerialize.h"
 #include "EngineClasses/SpatialNetBitReader.h"
 #include "Interop/SpatialConditionMapFilter.h"
@@ -20,9 +21,9 @@ namespace SpatialGDK
 {
 
 ComponentReader::ComponentReader(USpatialNetDriver* InNetDriver, FObjectReferencesMap& InObjectReferencesMap, TSet<FUnrealObjectRef>& InUnresolvedRefs)
-	: PackageMap(InNetDriver->PackageMap)
+	: PackageMap(InNetDriver->AllTheThings->PackageMap)
 	, NetDriver(InNetDriver)
-	, ClassInfoManager(InNetDriver->ClassInfoManager)
+	, ClassInfoManager(InNetDriver->AllTheThings->ClassInfoManager)
 	, RootObjectReferencesMap(InObjectReferencesMap)
 	, UnresolvedRefs(InUnresolvedRefs)
 {

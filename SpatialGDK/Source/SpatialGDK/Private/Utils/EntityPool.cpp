@@ -7,6 +7,8 @@
 #include "Interop/SpatialReceiver.h"
 #include "SpatialGDKSettings.h"
 
+#include "EngineClasses/SpatialBigBlob.h"
+
 DEFINE_LOG_CATEGORY(LogSpatialEntityPool);
 
 using namespace SpatialGDK;
@@ -14,7 +16,7 @@ using namespace SpatialGDK;
 void UEntityPool::Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager)
 {
 	NetDriver = InNetDriver;
-	Receiver = InNetDriver->Receiver;
+	Receiver = InNetDriver->AllTheThings->Receiver;
 	TimerManager = InTimerManager;
 
 	ReserveEntityIDs(GetDefault<USpatialGDKSettings>()->EntityPoolInitialReservationCount);
@@ -82,7 +84,7 @@ void UEntityPool::ReserveEntityIDs(int32 EntitiesToReserve)
 	});
 
 	// Reserve the Entity IDs
-	Worker_RequestId ReserveRequestID = NetDriver->Connection->SendReserveEntityIdsRequest(EntitiesToReserve);
+	Worker_RequestId ReserveRequestID = NetDriver->AllTheThings->Connection->SendReserveEntityIdsRequest(EntitiesToReserve);
 	bIsAwaitingResponse = true;
 
 	// Add the spawn delegate

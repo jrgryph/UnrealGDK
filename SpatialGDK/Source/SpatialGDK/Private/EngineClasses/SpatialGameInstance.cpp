@@ -10,6 +10,7 @@
 #include "Settings/LevelEditorPlaySettings.h"
 #endif
 
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetDriver.h"
 #include "EngineClasses/SpatialPendingNetGame.h"
 #include "Interop/Connection/SpatialWorkerConnection.h"
@@ -125,12 +126,12 @@ bool USpatialGameInstance::ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& A
 		}
 
 		USpatialNetDriver* NetDriver = Cast<USpatialNetDriver>(GetWorld()->GetNetDriver());
-		if (NetDriver == nullptr || NetDriver->SpatialMetrics == nullptr)
+		if (NetDriver == nullptr || NetDriver->AllTheThings == nullptr || NetDriver->AllTheThings->SpatialMetrics == nullptr)
 		{
 			return false;
 		}
 
-		return NetDriver->SpatialMetrics->ProcessConsoleExec(Cmd, Ar, Executor);
+		return NetDriver->AllTheThings->SpatialMetrics->ProcessConsoleExec(Cmd, Ar, Executor);
 	}
 	return true;
 }

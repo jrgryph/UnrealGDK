@@ -2,6 +2,7 @@
 
 #include "Interop/SpatialDispatcher.h"
 
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetConnection.h"
 #include "EngineClasses/SpatialNetDriver.h"
 #include "Interop/SpatialReceiver.h"
@@ -16,8 +17,8 @@ DEFINE_LOG_CATEGORY(LogSpatialView);
 void USpatialDispatcher::Init(USpatialNetDriver* InNetDriver)
 {
 	NetDriver = InNetDriver;
-	Receiver = InNetDriver->Receiver;
-	StaticComponentView = InNetDriver->StaticComponentView;
+	Receiver = InNetDriver->AllTheThings->Receiver;
+	StaticComponentView = InNetDriver->AllTheThings->StaticComponentView;
 }
 
 void USpatialDispatcher::ProcessOps(Worker_OpList* OpList)

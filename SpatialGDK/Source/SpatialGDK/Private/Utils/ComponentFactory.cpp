@@ -7,6 +7,7 @@
 #include "UObject/TextProperty.h"
 
 #include "EngineClasses/SpatialActorChannel.h"
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialFastArrayNetSerialize.h"
 #include "EngineClasses/SpatialNetBitWriter.h"
 #include "EngineClasses/SpatialNetDriver.h"
@@ -23,8 +24,8 @@ namespace SpatialGDK
 
 ComponentFactory::ComponentFactory(bool bInterestDirty, USpatialNetDriver* InNetDriver)
 	: NetDriver(InNetDriver)
-	, PackageMap(InNetDriver->PackageMap)
-	, ClassInfoManager(InNetDriver->ClassInfoManager)
+	, PackageMap(InNetDriver->AllTheThings->PackageMap)
+	, ClassInfoManager(InNetDriver->AllTheThings->ClassInfoManager)
 	, bInterestHasChanged(bInterestDirty)
 { }
 

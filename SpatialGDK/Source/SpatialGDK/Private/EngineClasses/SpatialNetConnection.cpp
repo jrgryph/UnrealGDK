@@ -4,6 +4,7 @@
 
 #include "TimerManager.h"
 
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetDriver.h"
 #include "EngineClasses/SpatialPackageMapClient.h"
 #include "Gameframework/PlayerController.h"
@@ -36,17 +37,17 @@ void USpatialNetConnection::InitBase(UNetDriver* InDriver, class FSocket* InSock
 {
 	Super::InitBase(InDriver, InSocket, InURL, InState, InMaxPacket, InPacketOverhead);
 
-	if (Cast<USpatialNetDriver>(InDriver)->PackageMap == nullptr)
+	if (Cast<USpatialNetDriver>(InDriver)->AllTheThings->PackageMap == nullptr)
 	{
 		// This should only happen if we're setting up the special "SpatialOS" connection.
 		auto PackageMapClient = NewObject<USpatialPackageMapClient>(this);
 		PackageMapClient->Initialize(this, InDriver->GuidCache);
 		PackageMap = PackageMapClient;
-		Cast<USpatialNetDriver>(InDriver)->PackageMap = PackageMapClient;
+		Cast<USpatialNetDriver>(InDriver)->AllTheThings->PackageMap = PackageMapClient;
 	}
 	else
 	{
-		PackageMap = Cast<USpatialNetDriver>(InDriver)->PackageMap;
+		PackageMap = Cast<USpatialNetDriver>(InDriver)->AllTheThings->PackageMap;
 	}
 }
 
@@ -93,7 +94,7 @@ void USpatialNetConnection::UpdateActorInterest(AActor* Actor)
 		return;
 	}
 
-	USpatialSender* Sender = Cast<USpatialNetDriver>(Driver)->Sender;
+	USpatialSender* Sender = Cast<USpatialNetDriver>(Driver)->AllTheThings->Sender;
 
 	Sender->UpdateInterestComponent(Actor);
 	for (const auto& Child : Actor->Children)
@@ -106,7 +107,7 @@ void USpatialNetConnection::ClientNotifyClientHasQuit()
 {
 	if (PlayerControllerEntity != SpatialConstants::INVALID_ENTITY_ID)
 	{
-		if (!Cast<USpatialNetDriver>(Driver)->StaticComponentView->HasAuthority(PlayerControllerEntity, SpatialConstants::HEARTBEAT_COMPONENT_ID))
+		if (!Cast<USpatialNetDriver>(Driver)->AllTheThings->StaticComponentView->HasAuthority(PlayerControllerEntity, SpatialConstants::HEARTBEAT_COMPONENT_ID))
 		{
 			UE_LOG(LogSpatialNetConnection, Warning, TEXT("Quit the game but no authority over Heartbeat component: NetConnection %s, PlayerController entity %lld"), *GetName(), PlayerControllerEntity);
 			return;
@@ -119,7 +120,7 @@ void USpatialNetConnection::ClientNotifyClientHasQuit()
 
 		Schema_AddBool(ComponentObject, SpatialConstants::HEARTBEAT_CLIENT_HAS_QUIT_ID, true);
 
-		Cast<USpatialNetDriver>(Driver)->Connection->SendComponentUpdate(PlayerControllerEntity, &Update);
+		Cast<USpatialNetDriver>(Driver)->AllTheThings->Connection->SendComponentUpdate(PlayerControllerEntity, &Update);
 	}
 	else
 	{
@@ -168,7 +169,7 @@ void USpatialNetConnection::SetHeartbeatEventTimer()
 			Schema_Object* EventsObject = Schema_GetComponentUpdateEvents(ComponentUpdate.schema_type);
 			Schema_AddObject(EventsObject, SpatialConstants::HEARTBEAT_EVENT_ID);
 
-			USpatialWorkerConnection* WorkerConnection = Cast<USpatialNetDriver>(Connection->Driver)->Connection;
+			USpatialWorkerConnection* WorkerConnection = Cast<USpatialNetDriver>(Connection->Driver)->AllTheThings->Connection;
 			if (WorkerConnection->IsConnected())
 			{
 				WorkerConnection->SendComponentUpdate(Connection->PlayerControllerEntity, &ComponentUpdate);

@@ -4,6 +4,7 @@
 
 #include "Engine/ActorChannel.h"
 
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetDriver.h"
 #include "Interop/Connection/SpatialWorkerConnection.h"
 #include "Interop/SpatialClassInfoManager.h"
@@ -64,15 +65,15 @@ public:
 			return false;
 		}
 
-		return NetDriver->StaticComponentView->HasAuthority(EntityId, SpatialConstants::CLIENT_RPC_ENDPOINT_COMPONENT_ID);
+		return NetDriver->AllTheThings->StaticComponentView->HasAuthority(EntityId, SpatialConstants::CLIENT_RPC_ENDPOINT_COMPONENT_ID);
 	}
 
 	// Indicates whether this client worker has "ownership" (authority over Client endpoint) over the entity corresponding to this channel.
 	FORCEINLINE bool IsOwnedByWorker() const
 	{
-		const TArray<FString>& WorkerAttributes = NetDriver->Connection->GetWorkerAttributes();
+		const TArray<FString>& WorkerAttributes = NetDriver->AllTheThings->Connection->GetWorkerAttributes();
 
-		if (const SpatialGDK::EntityAcl* EntityACL = NetDriver->StaticComponentView->GetComponentData<SpatialGDK::EntityAcl>(EntityId))
+		if (const SpatialGDK::EntityAcl* EntityACL = NetDriver->AllTheThings->StaticComponentView->GetComponentData<SpatialGDK::EntityAcl>(EntityId))
 		{
 			if (const WorkerRequirementSet* WorkerRequirementsSet = EntityACL->ComponentWriteAcl.Find(SpatialConstants::CLIENT_RPC_ENDPOINT_COMPONENT_ID))
 			{
@@ -94,7 +95,7 @@ public:
 
 	FORCEINLINE bool IsAuthoritativeServer()
 	{
-		return NetDriver->IsServer() && NetDriver->StaticComponentView->HasAuthority(EntityId, SpatialConstants::POSITION_COMPONENT_ID);
+		return NetDriver->IsServer() && NetDriver->AllTheThings->StaticComponentView->HasAuthority(EntityId, SpatialConstants::POSITION_COMPONENT_ID);
 	}
 
 	FORCEINLINE FRepLayout& GetObjectRepLayout(UObject* Object)

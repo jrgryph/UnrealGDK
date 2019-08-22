@@ -5,6 +5,7 @@
 #include "HAL/Platform.h"
 #include "Net/RepLayout.h"
 
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetBitReader.h"
 #include "EngineClasses/SpatialNetBitWriter.h"
 #include "EngineClasses/SpatialNetDriver.h"
@@ -138,7 +139,7 @@ inline void ReadStructProperty(FSpatialNetBitReader& Reader, UStructProperty* Pr
 		UScriptStruct::ICppStructOps* CppStructOps = Struct->GetCppStructOps();
 		check(CppStructOps); // else should not have STRUCT_NetSerializeNative
 		bool bSuccess = true;
-		if (!CppStructOps->NetSerialize(Reader, NetDriver->PackageMap, bSuccess, Data))
+		if (!CppStructOps->NetSerialize(Reader, NetDriver->AllTheThings->PackageMap, bSuccess, Data))
 		{
 			bOutHasUnmapped = true;
 		}
@@ -153,7 +154,7 @@ inline void ReadStructProperty(FSpatialNetBitReader& Reader, UStructProperty* Pr
 	{
 		TSharedPtr<FRepLayout> RepLayout = NetDriver->GetStructRepLayout(Struct);
 
-		RepLayout_SerializePropertiesForStruct(*RepLayout, Reader, NetDriver->PackageMap, Data, bOutHasUnmapped);
+		RepLayout_SerializePropertiesForStruct(*RepLayout, Reader, NetDriver->AllTheThings->PackageMap, Data, bOutHasUnmapped);
 	}
 }
 

@@ -9,6 +9,7 @@
 #include "EngineClasses/SpatialActorChannel.h"
 #include "EngineClasses/SpatialNetConnection.h"
 #include "EngineClasses/SpatialNetDriver.h"
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialPackageMapClient.h"
 #include "Interop/Connection/SpatialWorkerConnection.h"
 #include "Interop/SpatialDispatcher.h"
@@ -61,12 +62,12 @@ FPendingRPC::FPendingRPC(FPendingRPC&& Other)
 void USpatialSender::Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager)
 {
 	NetDriver = InNetDriver;
-	StaticComponentView = InNetDriver->StaticComponentView;
-	Connection = InNetDriver->Connection;
-	Receiver = InNetDriver->Receiver;
-	PackageMap = InNetDriver->PackageMap;
-	ClassInfoManager = InNetDriver->ClassInfoManager;
-	ActorGroupManager = InNetDriver->ActorGroupManager;
+	StaticComponentView = InNetDriver->AllTheThings->StaticComponentView;
+	Connection = InNetDriver->AllTheThings->Connection;
+	Receiver = InNetDriver->AllTheThings->Receiver;
+	PackageMap = InNetDriver->AllTheThings->PackageMap;
+	ClassInfoManager = InNetDriver->AllTheThings->ClassInfoManager;
+	ActorGroupManager = InNetDriver->AllTheThings->ActorGroupManager;
 	TimerManager = InTimerManager;
 
 	OutgoingRPCs.BindProcessingFunction(FProcessRPCDelegate::CreateUObject(this, &USpatialSender::SendRPC));
@@ -416,7 +417,7 @@ void USpatialSender::SendRemoveComponent(Worker_EntityId EntityId, const FClassI
 	{
 		if (SubobjectComponentId != SpatialConstants::INVALID_COMPONENT_ID)
 		{
-			NetDriver->Connection->SendRemoveComponent(EntityId, SubobjectComponentId);
+			NetDriver->AllTheThings->Connection->SendRemoveComponent(EntityId, SubobjectComponentId);
 		}
 	}
 
@@ -498,7 +499,7 @@ void USpatialSender::SendComponentUpdates(UObject* Object, const FClassInfo& Inf
 
 	for (Worker_ComponentUpdate& Update : ComponentUpdates)
 	{
-		if (!NetDriver->StaticComponentView->HasAuthority(EntityId, Update.component_id))
+		if (!NetDriver->AllTheThings->StaticComponentView->HasAuthority(EntityId, Update.component_id))
 		{
 			UE_LOG(LogSpatialSender, Verbose, TEXT("Trying to send component update but don't have authority! Update will be queued and sent when authority gained. Component Id: %d, entity: %lld"), Update.component_id, EntityId);
 
@@ -619,7 +620,7 @@ void USpatialSender::SendComponentInterestForActor(USpatialActorChannel* Channel
 {
 	checkf(!NetDriver->IsServer(), TEXT("Tried to set ComponentInterest on a server-worker. This should never happen!"));
 
-	NetDriver->Connection->SendComponentInterest(EntityId, CreateComponentInterestForActor(Channel, bNetOwned));
+	NetDriver->AllTheThings->Connection->SendComponentInterest(EntityId, CreateComponentInterestForActor(Channel, bNetOwned));
 }
 
 void USpatialSender::SendComponentInterestForSubobject(const FClassInfo& Info, Worker_EntityId EntityId, bool bNetOwned)
@@ -628,13 +629,13 @@ void USpatialSender::SendComponentInterestForSubobject(const FClassInfo& Info, W
 
 	TArray<Worker_InterestOverride> ComponentInterest;
 	FillComponentInterests(Info, bNetOwned, ComponentInterest);
-	NetDriver->Connection->SendComponentInterest(EntityId, MoveTemp(ComponentInterest));
+	NetDriver->AllTheThings->Connection->SendComponentInterest(EntityId, MoveTemp(ComponentInterest));
 }
 
 void USpatialSender::SendPositionUpdate(Worker_EntityId EntityId, const FVector& Location)
 {
 #if !UE_BUILD_SHIPPING
-	if (!NetDriver->StaticComponentView->HasAuthority(EntityId, SpatialConstants::POSITION_COMPONENT_ID))
+	if (!NetDriver->AllTheThings->StaticComponentView->HasAuthority(EntityId, SpatialConstants::POSITION_COMPONENT_ID))
 	{
 		UE_LOG(LogSpatialSender, Verbose, TEXT("Trying to send Position component update but don't have authority! Update will not be sent. Entity: %lld"), EntityId);
 		return;
@@ -691,7 +692,7 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 
 			OutgoingOnCreateEntityRPCs.FindOrAdd(TargetObject).RPCs.Add(Payload);
 #if !UE_BUILD_SHIPPING
-			NetDriver->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
+			NetDriver->AllTheThings->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
 #endif // !UE_BUILD_SHIPPING
 			return ERPCResult::Success;
 		}
@@ -715,7 +716,7 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 		Worker_RequestId RequestId = Connection->SendCommandRequest(EntityId, &CommandRequest, SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID);
 
 #if !UE_BUILD_SHIPPING
-		NetDriver->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
+		NetDriver->AllTheThings->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
 #endif // !UE_BUILD_SHIPPING
 
 		if (Function->HasAnyFunctionFlags(FUNC_NetReliable))
@@ -791,14 +792,14 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 #if !UE_BUILD_SHIPPING
 			if (Result == ERPCResult::Success)
 			{
-				NetDriver->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
+				NetDriver->AllTheThings->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
 			}
 #endif // !UE_BUILD_SHIPPING
 			return Result;
 		}
 		else
 		{
-			if (!NetDriver->StaticComponentView->HasAuthority(EntityId, ComponentId))
+			if (!NetDriver->AllTheThings->StaticComponentView->HasAuthority(EntityId, ComponentId))
 			{
 				return ERPCResult::NoAuthority;
 			}
@@ -807,7 +808,7 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 
 			Connection->SendComponentUpdate(EntityId, &ComponentUpdate);
 #if !UE_BUILD_SHIPPING
-			NetDriver->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
+			NetDriver->AllTheThings->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
 #endif // !UE_BUILD_SHIPPING
 			return ERPCResult::Success;
 		}
@@ -894,14 +895,14 @@ void USpatialSender::SendDeleteEntityRequest(Worker_EntityId EntityId)
 void USpatialSender::SendRequestToClearRPCsOnEntityCreation(Worker_EntityId EntityId)
 {
 	Worker_CommandRequest CommandRequest = RPCsOnEntityCreation::CreateClearFieldsCommandRequest();
-	NetDriver->Connection->SendCommandRequest(EntityId, &CommandRequest, SpatialConstants::CLEAR_RPCS_ON_ENTITY_CREATION);
+	NetDriver->AllTheThings->Connection->SendCommandRequest(EntityId, &CommandRequest, SpatialConstants::CLEAR_RPCS_ON_ENTITY_CREATION);
 }
 
 void USpatialSender::ClearRPCsOnEntityCreation(Worker_EntityId EntityId)
 {
 	check(NetDriver->IsServer());
 	Worker_ComponentUpdate Update = RPCsOnEntityCreation::CreateClearFieldsUpdate();
-	NetDriver->Connection->SendComponentUpdate(EntityId, &Update);
+	NetDriver->AllTheThings->Connection->SendComponentUpdate(EntityId, &Update);
 }
 
 void USpatialSender::SendClientEndpointReadyUpdate(Worker_EntityId EntityId)
@@ -909,7 +910,7 @@ void USpatialSender::SendClientEndpointReadyUpdate(Worker_EntityId EntityId)
 	ClientRPCEndpoint Endpoint;
 	Endpoint.bReady = true;
 	Worker_ComponentUpdate Update = Endpoint.CreateRPCEndpointUpdate();
-	NetDriver->Connection->SendComponentUpdate(EntityId, &Update);
+	NetDriver->AllTheThings->Connection->SendComponentUpdate(EntityId, &Update);
 }
 
 void USpatialSender::SendServerEndpointReadyUpdate(Worker_EntityId EntityId)
@@ -917,7 +918,7 @@ void USpatialSender::SendServerEndpointReadyUpdate(Worker_EntityId EntityId)
 	ServerRPCEndpoint Endpoint;
 	Endpoint.bReady = true;
 	Worker_ComponentUpdate Update = Endpoint.CreateRPCEndpointUpdate();
-	NetDriver->Connection->SendComponentUpdate(EntityId, &Update);
+	NetDriver->AllTheThings->Connection->SendComponentUpdate(EntityId, &Update);
 }
 
 void USpatialSender::ProcessOrQueueOutgoingRPC(const FUnrealObjectRef& InTargetObjectRef, SpatialGDK::RPCPayload&& InPayload)
@@ -1077,7 +1078,7 @@ bool USpatialSender::UpdateEntityACLs(Worker_EntityId EntityId, const FString& O
 		return false;
 	}
 
-	if (!NetDriver->StaticComponentView->HasAuthority(EntityId, SpatialConstants::ENTITY_ACL_COMPONENT_ID))
+	if (!NetDriver->AllTheThings->StaticComponentView->HasAuthority(EntityId, SpatialConstants::ENTITY_ACL_COMPONENT_ID))
 	{
 		UE_LOG(LogSpatialSender, Warning, TEXT("Trying to update EntityACL but don't have authority! Update will not be sent. Entity: %lld"), EntityId);
 		return false;

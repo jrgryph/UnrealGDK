@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 
 #include "EngineClasses/SpatialActorChannel.h"
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetDriver.h"
 #include "Interop/Connection/SpatialWorkerConnection.h"
 #include "Interop/SpatialReceiver.h"
@@ -62,7 +63,7 @@ Worker_EntityId USpatialPackageMapClient::AllocateEntityIdAndResolveActor(AActor
 	check(Actor);
 	checkf(NetDriver->IsServer(), TEXT("Tried to allocate an Entity ID on the client, this shouldn't happen."));
 
-	Worker_EntityId EntityId = NetDriver->EntityPool->GetNextEntityId();
+	Worker_EntityId EntityId = NetDriver->AllTheThings->EntityPool->GetNextEntityId();
 	if (EntityId == SpatialConstants::INVALID_ENTITY_ID)
 	{
 		UE_LOG(LogSpatialPackageMap, Error, TEXT("Unable to retrieve an Entity ID for Actor: %s"), *Actor->GetName());
@@ -102,7 +103,7 @@ FNetworkGUID USpatialPackageMapClient::TryResolveObjectAsEntity(UObject* Value)
 	}
 
 	// Resolve as an entity if it is an unregistered actor
-	if (Actor->Role == ROLE_Authority && NetDriver->PackageMap->GetEntityIdFromObject(Actor) == SpatialConstants::INVALID_ENTITY_ID)
+	if (Actor->Role == ROLE_Authority && NetDriver->AllTheThings->PackageMap->GetEntityIdFromObject(Actor) == SpatialConstants::INVALID_ENTITY_ID)
 	{
 		Worker_EntityId EntityId = AllocateEntityIdAndResolveActor(Actor);
 		if (EntityId != SpatialConstants::INVALID_ENTITY_ID)
@@ -292,7 +293,7 @@ FNetworkGUID FSpatialNetGUIDCache::AssignNewEntityActorNetGUID(AActor* Actor, Wo
 	check(EntityId > 0);
 
 	USpatialNetDriver* SpatialNetDriver = Cast<USpatialNetDriver>(Driver);
-	USpatialReceiver* Receiver = SpatialNetDriver->Receiver;
+	USpatialReceiver* Receiver = SpatialNetDriver->AllTheThings->Receiver;
 
 	FNetworkGUID NetGUID;
 	FUnrealObjectRef EntityObjectRef(EntityId, 0);
@@ -332,7 +333,7 @@ FNetworkGUID FSpatialNetGUIDCache::AssignNewEntityActorNetGUID(AActor* Actor, Wo
 		Receiver->ResolvePendingOperations(Actor, EntityObjectRef);
 	}
 
-	const FClassInfo& Info = SpatialNetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(Actor->GetClass());
+	const FClassInfo& Info = SpatialNetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Actor->GetClass());
 	const SubobjectToOffsetMap& SubobjectToOffset = SpatialGDK::CreateOffsetMapFromActor(Actor, Info);
 
 	for (auto& Pair : SubobjectToOffset)
@@ -387,7 +388,7 @@ void FSpatialNetGUIDCache::AssignNewSubobjectNetGUID(UObject* Subobject, const F
 	FNetworkGUID SubobjectNetGUID = GetOrAssignNetGUID_SpatialGDK(Subobject);
 	RegisterObjectRef(SubobjectNetGUID, SubobjectRef);
 
-	Cast<USpatialNetDriver>(Driver)->Receiver->ResolvePendingOperations(Subobject, SubobjectRef);
+	Cast<USpatialNetDriver>(Driver)->AllTheThings->Receiver->ResolvePendingOperations(Subobject, SubobjectRef);
 }
 
 // Recursively assign netguids to the outer chain of a UObject. Then associate them with their Spatial representation (FUnrealObjectRef)
@@ -435,7 +436,7 @@ void FSpatialNetGUIDCache::RemoveEntityNetGUID(Worker_EntityId EntityId)
 	// Remove actor subobjects.
 	USpatialNetDriver* SpatialNetDriver = Cast<USpatialNetDriver>(Driver);
 
-	SpatialGDK::UnrealMetadata* UnrealMetadata = SpatialNetDriver->StaticComponentView->GetComponentData<SpatialGDK::UnrealMetadata>(EntityId);
+	SpatialGDK::UnrealMetadata* UnrealMetadata = SpatialNetDriver->AllTheThings->StaticComponentView->GetComponentData<SpatialGDK::UnrealMetadata>(EntityId);
 
 	// If UnrealMetadata is nullptr (can happen if the editor is closing down) just return.
 	if (UnrealMetadata == nullptr)
@@ -458,7 +459,7 @@ void FSpatialNetGUIDCache::RemoveEntityNetGUID(Worker_EntityId EntityId)
 	}
 	else
 	{
-		const FClassInfo& Info = SpatialNetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(UnrealMetadata->GetNativeEntityClass());
+		const FClassInfo& Info = SpatialNetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(UnrealMetadata->GetNativeEntityClass());
 
 		for (auto& SubobjectInfoPair : Info.SubobjectInfo)
 		{
@@ -514,7 +515,7 @@ void FSpatialNetGUIDCache::RemoveSubobjectNetGUID(const FUnrealObjectRef& Subobj
 	}
 
 	USpatialNetDriver* SpatialNetDriver = Cast<USpatialNetDriver>(Driver);
-	SpatialGDK::UnrealMetadata* UnrealMetadata = SpatialNetDriver->StaticComponentView->GetComponentData<SpatialGDK::UnrealMetadata>(SubobjectRef.Entity);
+	SpatialGDK::UnrealMetadata* UnrealMetadata = SpatialNetDriver->AllTheThings->StaticComponentView->GetComponentData<SpatialGDK::UnrealMetadata>(SubobjectRef.Entity);
 
 	// If UnrealMetadata is nullptr (can happen if the editor is closing down) just return.
 	if (UnrealMetadata == nullptr)
@@ -535,7 +536,7 @@ void FSpatialNetGUIDCache::RemoveSubobjectNetGUID(const FUnrealObjectRef& Subobj
 	}
 	else
 	{
-		const FClassInfo& Info = SpatialNetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(UnrealMetadata->GetNativeEntityClass());
+		const FClassInfo& Info = SpatialNetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(UnrealMetadata->GetNativeEntityClass());
 
 		// Part of the CDO
 		if (const TSharedRef<const FClassInfo>* SubobjectInfoPtr = Info.SubobjectInfo.Find(SubobjectRef.Offset))
@@ -672,7 +673,7 @@ FNetworkGUID FSpatialNetGUIDCache::GetOrAssignNetGUID_SpatialGDK(UObject* Object
 		RegisterNetGUID_Internal(NetGUID, CacheObject);
 
 		UE_LOG(LogSpatialPackageMap, Verbose, TEXT("%s: NetGUID for object %s was not found in the cache. Generated new NetGUID %s."),
-			*Cast<USpatialNetDriver>(Driver)->Connection->GetWorkerId(),
+			*Cast<USpatialNetDriver>(Driver)->AllTheThings->Connection->GetWorkerId(),
 			*Object->GetPathName(),
 			*NetGUID.ToString());
 	}

@@ -5,6 +5,7 @@
 #include "Debug/DebugDrawService.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetDriver.h"
 #include "Interop/Connection/SpatialWorkerConnection.h"
 #include "Net/UnrealNetwork.h"
@@ -174,8 +175,9 @@ void ASpatialMetricsDisplay::Tick(float DeltaSeconds)
 	USpatialNetDriver* SpatialNetDriver = Cast<USpatialNetDriver>(GetWorld()->GetNetDriver());
 
 	if (SpatialNetDriver == nullptr ||
-		SpatialNetDriver->Connection == nullptr ||
-		SpatialNetDriver->SpatialMetrics == nullptr)
+		SpatialNetDriver->AllTheThings == nullptr ||
+		SpatialNetDriver->AllTheThings->Connection == nullptr ||
+		SpatialNetDriver->AllTheThings->SpatialMetrics == nullptr)
 	{
 		return;
 	}
@@ -201,10 +203,10 @@ void ASpatialMetricsDisplay::Tick(float DeltaSeconds)
 		}
 	}
 
-	const USpatialMetrics& Metrics = *SpatialNetDriver->SpatialMetrics;
+	const USpatialMetrics& Metrics = *SpatialNetDriver->AllTheThings->SpatialMetrics;
 
 	FWorkerStats Stats{};
-	Stats.WorkerName = SpatialNetDriver->Connection->GetWorkerId().Left(WorkerNameMaxLength).ToLower();
+	Stats.WorkerName = SpatialNetDriver->AllTheThings->Connection->GetWorkerId().Left(WorkerNameMaxLength).ToLower();
 	Stats.AverageFPS = Metrics.GetAverageFPS();
 	Stats.ServerConsiderListSize = SpatialNetDriver->GetConsiderListSize();
 	Stats.ServerReplicationLimit = GetDefault<USpatialGDKSettings>()->ActorReplicationRateLimit;

@@ -103,19 +103,19 @@ void USpatialActorChannel::Init(UNetConnection* InConnection, int32 ChannelIndex
 
 	NetDriver = Cast<USpatialNetDriver>(Connection->Driver);
 	check(NetDriver);
-	Sender = NetDriver->Sender;
-	Receiver = NetDriver->Receiver;
+	Sender = NetDriver->AllTheThings->Sender;
+	Receiver = NetDriver->AllTheThings->Receiver;
 }
 #endif
 
 void USpatialActorChannel::DeleteEntityIfAuthoritative()
 {
-	if (NetDriver->Connection == nullptr)
+	if (NetDriver->AllTheThings == nullptr || NetDriver->AllTheThings->Connection == nullptr)
 	{
 		return;
 	}
 
-	bool bHasAuthority = NetDriver->IsAuthoritativeDestructionAllowed() && NetDriver->StaticComponentView->GetAuthority(EntityId, SpatialGDK::Position::ComponentId) == WORKER_AUTHORITY_AUTHORITATIVE;
+	bool bHasAuthority = NetDriver->IsAuthoritativeDestructionAllowed() && NetDriver->AllTheThings->StaticComponentView->GetAuthority(EntityId, SpatialGDK::Position::ComponentId) == WORKER_AUTHORITY_AUTHORITATIVE;
 
 	UE_LOG(LogSpatialActorChannel, Log, TEXT("Delete entity request on %lld. Has authority: %d"), EntityId, (int)bHasAuthority);
 
@@ -142,7 +142,7 @@ void USpatialActorChannel::DeleteEntityIfAuthoritative()
 
 bool USpatialActorChannel::IsSingletonEntity()
 {
-	return NetDriver->GlobalStateManager->IsSingletonEntity(EntityId);
+	return NetDriver->AllTheThings->GlobalStateManager->IsSingletonEntity(EntityId);
 }
 
 #if ENGINE_MINOR_VERSION <= 20
@@ -401,7 +401,7 @@ int64 USpatialActorChannel::ReplicateActor()
 
 	ActorReplicator->RepState->LastCompareIndex = ChangelistState->CompareIndex;
 
-	const FClassInfo& Info = NetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(Actor->GetClass());
+	const FClassInfo& Info = NetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Actor->GetClass());
 
 	FHandoverChangeState HandoverChangeState;
 
@@ -488,10 +488,10 @@ int64 USpatialActorChannel::ReplicateActor()
 			if (!RepComp.Value()->GetWeakObjectPtr().IsValid())
 #endif
 			{
-				FUnrealObjectRef ObjectRef = NetDriver->PackageMap->GetUnrealObjectRefFromNetGUID(RepComp.Value().Get().ObjectNetGUID);
+				FUnrealObjectRef ObjectRef = NetDriver->AllTheThings->PackageMap->GetUnrealObjectRefFromNetGUID(RepComp.Value().Get().ObjectNetGUID);
 				if (ObjectRef.IsValid())
 				{
-					Sender->SendRemoveComponent(EntityId, NetDriver->ClassInfoManager->GetClassInfoByComponentId(ObjectRef.Offset));
+					Sender->SendRemoveComponent(EntityId, NetDriver->AllTheThings->ClassInfoManager->GetClassInfoByComponentId(ObjectRef.Offset));
 				}
 
 				RepComp.Value()->CleanUp();
@@ -515,14 +515,14 @@ int64 USpatialActorChannel::ReplicateActor()
 void USpatialActorChannel::DynamicallyAttachSubobject(UObject* Object)
 {
 	// Find out if this is a dynamic subobject or a subobject that is already attached but is now replicated
-	FUnrealObjectRef ObjectRef = NetDriver->PackageMap->GetUnrealObjectRefFromObject(Object);
+	FUnrealObjectRef ObjectRef = NetDriver->AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Object);
 
 	const FClassInfo* Info = nullptr;
 
 	// Subobject that's a part of the CDO by default does not need to be created.
 	if (ObjectRef.IsValid())
 	{
-		Info = &NetDriver->ClassInfoManager->GetOrCreateClassInfoByObject(Object);
+		Info = &NetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByObject(Object);
 	}
 	else
 	{
@@ -538,7 +538,7 @@ void USpatialActorChannel::DynamicallyAttachSubobject(UObject* Object)
 	check(Info != nullptr);
 
 	// Check to see if we already have authority over the subobject to be added
-	if (NetDriver->StaticComponentView->HasAuthority(EntityId, Info->SchemaComponents[SCHEMA_Data]))
+	if (NetDriver->AllTheThings->StaticComponentView->HasAuthority(EntityId, Info->SchemaComponents[SCHEMA_Data]))
 	{
 		Sender->SendAddComponent(this, Object, *Info);
 	}
@@ -554,14 +554,14 @@ bool USpatialActorChannel::IsListening() const
 {
 	if (NetDriver->IsServer())
 	{
-		if (SpatialGDK::ClientRPCEndpoint* Endpoint = NetDriver->StaticComponentView->GetComponentData<SpatialGDK::ClientRPCEndpoint>(EntityId))
+		if (SpatialGDK::ClientRPCEndpoint* Endpoint = NetDriver->AllTheThings->StaticComponentView->GetComponentData<SpatialGDK::ClientRPCEndpoint>(EntityId))
 		{
 			return Endpoint->bReady;
 		}
 	}
 	else
 	{
-		if (SpatialGDK::ServerRPCEndpoint* Endpoint = NetDriver->StaticComponentView->GetComponentData<SpatialGDK::ServerRPCEndpoint>(EntityId))
+		if (SpatialGDK::ServerRPCEndpoint* Endpoint = NetDriver->AllTheThings->StaticComponentView->GetComponentData<SpatialGDK::ServerRPCEndpoint>(EntityId))
 		{
 			return Endpoint->bReady;
 		}
@@ -574,13 +574,13 @@ const FClassInfo* USpatialActorChannel::TryResolveNewDynamicSubobjectAndGetClass
 {
 	const FClassInfo* Info = nullptr;
 
-	const FClassInfo& SubobjectInfo = NetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(Object->GetClass());
+	const FClassInfo& SubobjectInfo = NetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Object->GetClass());
 
 	// Find the first ClassInfo relating to a dynamic subobject
 	// which has not been used on this entity.
 	for (const auto& DynamicSubobjectInfo : SubobjectInfo.DynamicSubobjectInfo)
 	{
-		if (!NetDriver->PackageMap->GetObjectFromUnrealObjectRef(FUnrealObjectRef(EntityId, DynamicSubobjectInfo->SchemaComponents[SCHEMA_Data])).IsValid())
+		if (!NetDriver->AllTheThings->PackageMap->GetObjectFromUnrealObjectRef(FUnrealObjectRef(EntityId, DynamicSubobjectInfo->SchemaComponents[SCHEMA_Data])).IsValid())
 		{
 			Info = &DynamicSubobjectInfo.Get();
 			break;
@@ -595,7 +595,7 @@ const FClassInfo* USpatialActorChannel::TryResolveNewDynamicSubobjectAndGetClass
 		return Info;
 	}
 
-	NetDriver->PackageMap->ResolveSubobject(Object, FUnrealObjectRef(EntityId, Info->SchemaComponents[SCHEMA_Data]));
+	NetDriver->AllTheThings->PackageMap->ResolveSubobject(Object, FUnrealObjectRef(EntityId, Info->SchemaComponents[SCHEMA_Data]));
 
 	return Info;
 }
@@ -667,14 +667,14 @@ bool USpatialActorChannel::ReplicateSubobject(UObject* Object, const FReplicatio
 	{
 		FRepChangeState RepChangeState = { RepChanged, GetObjectRepLayout(Object) };
 
-		FUnrealObjectRef ObjectRef = NetDriver->PackageMap->GetUnrealObjectRefFromObject(Object);
+		FUnrealObjectRef ObjectRef = NetDriver->AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Object);
 		if (!ObjectRef.IsValid())
 		{
 			UE_LOG(LogSpatialActorChannel, Verbose, TEXT("Attempted to replicate an invalid ObjectRef. This may be a dynamic component that couldn't attach: %s"), *Object->GetName());
 			return false;
 		}
 		
-		const FClassInfo& Info = NetDriver->ClassInfoManager->GetOrCreateClassInfoByObject(Object);
+		const FClassInfo& Info = NetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByObject(Object);
 		Sender->SendComponentUpdates(Object, Info, this, &RepChangeState, nullptr);
 
 		Replicator.RepState->HistoryEnd++;
@@ -694,7 +694,7 @@ bool USpatialActorChannel::ReplicateSubobject(UObject* Obj, FOutBunch& Bunch, co
 
 TMap<UObject*, const FClassInfo*> USpatialActorChannel::GetHandoverSubobjects()
 {
-	const FClassInfo& Info = NetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(Actor->GetClass());
+	const FClassInfo& Info = NetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Actor->GetClass());
 
 	TMap<UObject*, const FClassInfo*> FoundSubobjects;
 
@@ -715,7 +715,7 @@ TMap<UObject*, const FClassInfo*> USpatialActorChannel::GetHandoverSubobjects()
 		}
 		else
 		{
-			Object = NetDriver->PackageMap->GetObjectFromUnrealObjectRef(FUnrealObjectRef(EntityId, SubobjectInfoPair.Key)).Get();
+			Object = NetDriver->AllTheThings->PackageMap->GetObjectFromUnrealObjectRef(FUnrealObjectRef(EntityId, SubobjectInfoPair.Key)).Get();
 		}
 
 
@@ -732,7 +732,7 @@ TMap<UObject*, const FClassInfo*> USpatialActorChannel::GetHandoverSubobjects()
 
 void USpatialActorChannel::InitializeHandoverShadowData(TArray<uint8>& ShadowData, UObject* Object)
 {
-	const FClassInfo& ClassInfo = NetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(Object->GetClass());
+	const FClassInfo& ClassInfo = NetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Object->GetClass());
 
 	uint32 Size = 0;
 	for (const FHandoverPropertyInfo& PropertyInfo : ClassInfo.HandoverProperties)
@@ -761,7 +761,7 @@ FHandoverChangeState USpatialActorChannel::GetHandoverChangeList(TArray<uint8>& 
 {
 	FHandoverChangeState HandoverChanged;
 
-	const FClassInfo& ClassInfo = NetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(Object->GetClass());
+	const FClassInfo& ClassInfo = NetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Object->GetClass());
 
 	uint32 ShadowDataOffset = 0;
 	for (const FHandoverPropertyInfo& PropertyInfo : ClassInfo.HandoverProperties)
@@ -786,7 +786,7 @@ void USpatialActorChannel::SetChannelActor(AActor* InActor)
 {
 	Super::SetChannelActor(InActor);
 	
-	USpatialPackageMapClient* PackageMap = NetDriver->PackageMap;
+	USpatialPackageMapClient* PackageMap = NetDriver->AllTheThings->PackageMap;
 	EntityId = PackageMap->GetEntityIdFromObject(InActor);
 
 	// If the entity registry has no entry for this actor, this means we need to create it.
@@ -811,7 +811,7 @@ void USpatialActorChannel::SetChannelActor(AActor* InActor)
 	check(!HandoverShadowDataMap.Contains(InActor));
 
 	// Create the shadow map, and store a quick access pointer to it
-	const FClassInfo& Info = NetDriver->ClassInfoManager->GetOrCreateClassInfoByClass(InActor->GetClass());
+	const FClassInfo& Info = NetDriver->AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(InActor->GetClass());
 	if (Info.SchemaComponents[SCHEMA_Handover] != SpatialConstants::INVALID_COMPONENT_ID)
 	{
 		ActorHandoverShadowData = &HandoverShadowDataMap.Add(InActor, MakeShared<TArray<uint8>>()).Get();
@@ -831,7 +831,7 @@ void USpatialActorChannel::SetChannelActor(AActor* InActor)
 
 bool USpatialActorChannel::TryResolveActor()
 {
-	EntityId = NetDriver->PackageMap->AllocateEntityIdAndResolveActor(Actor);
+	EntityId = NetDriver->AllTheThings->PackageMap->AllocateEntityIdAndResolveActor(Actor);
 
 	if (EntityId == SpatialConstants::INVALID_ENTITY_ID)
 	{
@@ -841,7 +841,7 @@ bool USpatialActorChannel::TryResolveActor()
 	// If a Singleton was created, update the GSM with the proper Id.
 	if (Actor->GetClass()->HasAnySpatialClassFlags(SPATIALCLASS_Singleton))
 	{
-		NetDriver->GlobalStateManager->UpdateSingletonEntityId(Actor->GetClass()->GetPathName(), EntityId);
+		NetDriver->AllTheThings->GlobalStateManager->UpdateSingletonEntityId(Actor->GetClass()->GetPathName(), EntityId);
 	}
 
 	// Inform USpatialNetDriver of this new actor channel/entity pairing
@@ -904,7 +904,7 @@ void USpatialActorChannel::OnCreateEntityResponse(const Worker_CreateEntityRespo
 #if !UE_BUILD_SHIPPING
 		// Commands can timeout locally, but still be processed by the runtime. When this occurs, our follow up `CreateEntityRequest` will be
 		// superfluous, as the entity will already be created. If we detect that the entity is already in our view, reduce the message severity
-		else if (NetDriver->StaticComponentView->GetComponentData<SpatialGDK::Position>(GetEntityId()) == nullptr)
+		else if (NetDriver->AllTheThings->StaticComponentView->GetComponentData<SpatialGDK::Position>(GetEntityId()) == nullptr)
 		{
 			UE_LOG(LogSpatialActorChannel, Error, TEXT("Failed to create entity for actor %s: Reason: %s"), *Actor->GetName(), UTF8_TO_TCHAR(Op.message));
 		}
@@ -963,21 +963,21 @@ void USpatialActorChannel::UpdateSpatialPosition()
 	{
 		if (APawn* Pawn = PlayerController->GetPawn())
 		{
-			SendPositionUpdate(Pawn, NetDriver->PackageMap->GetEntityIdFromObject(Pawn), LastPositionSinceUpdate);
+			SendPositionUpdate(Pawn, NetDriver->AllTheThings->PackageMap->GetEntityIdFromObject(Pawn), LastPositionSinceUpdate);
 		}
 	}
 }
 
 void USpatialActorChannel::SendPositionUpdate(AActor* InActor, Worker_EntityId InEntityId, const FVector& NewPosition)
 {
-	if (InEntityId != SpatialConstants::INVALID_ENTITY_ID && NetDriver->StaticComponentView->HasAuthority(InEntityId, SpatialConstants::POSITION_COMPONENT_ID))
+	if (InEntityId != SpatialConstants::INVALID_ENTITY_ID && NetDriver->AllTheThings->StaticComponentView->HasAuthority(InEntityId, SpatialConstants::POSITION_COMPONENT_ID))
 	{
 		Sender->SendPositionUpdate(InEntityId, NewPosition);
 	}
 
 	for (const auto& Child : InActor->Children)
 	{
-		SendPositionUpdate(Child, NetDriver->PackageMap->GetEntityIdFromObject(Child), NewPosition);
+		SendPositionUpdate(Child, NetDriver->AllTheThings->PackageMap->GetEntityIdFromObject(Child), NewPosition);
 	}
 }
 
@@ -1045,7 +1045,7 @@ void USpatialActorChannel::ServerProcessOwnershipChange()
 
 	for (AActor* Child : Actor->Children)
 	{
-		Worker_EntityId ChildEntityId = NetDriver->PackageMap->GetEntityIdFromObject(Child);
+		Worker_EntityId ChildEntityId = NetDriver->AllTheThings->PackageMap->GetEntityIdFromObject(Child);
 
 		if (USpatialActorChannel* Channel = NetDriver->GetActorChannelByEntityId(ChildEntityId))
 		{

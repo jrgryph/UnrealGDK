@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetDriver.h"
 #include "Interop/Connection/SpatialWorkerConnection.h"
 #include "Interop/SpatialReceiver.h"
@@ -64,7 +65,7 @@ void USpatialPlayerSpawner::ReceivePlayerSpawnRequest(Schema_Object* Payload, co
 	CommandResponse.schema_type = Schema_CreateCommandResponse(SpatialConstants::PLAYER_SPAWNER_COMPONENT_ID, 1);
 	Schema_Object* ResponseObject = Schema_GetCommandResponseObject(CommandResponse.schema_type);
 
-	NetDriver->Connection->SendCommandResponse(RequestId, &CommandResponse);
+	NetDriver->AllTheThings->Connection->SendCommandResponse(RequestId, &CommandResponse);
 }
 
 void USpatialPlayerSpawner::SendPlayerSpawnRequest()
@@ -79,7 +80,7 @@ void USpatialPlayerSpawner::SendPlayerSpawnRequest()
 	SpatialSpawnerQuery.result_type = WORKER_RESULT_TYPE_SNAPSHOT;
 
 	Worker_RequestId RequestID;
-	RequestID = NetDriver->Connection->SendEntityQueryRequest(&SpatialSpawnerQuery);
+	RequestID = NetDriver->AllTheThings->Connection->SendEntityQueryRequest(&SpatialSpawnerQuery);
 
 	EntityQueryDelegate SpatialSpawnerQueryDelegate;
 	SpatialSpawnerQueryDelegate.BindLambda([this, RequestID](const Worker_EntityQueryResponseOp& Op)
@@ -117,12 +118,12 @@ void USpatialPlayerSpawner::SendPlayerSpawnRequest()
 			bool bSimulatedPlayer = GameInstance ? GameInstance->IsSimulatedPlayer() : false;
 			Schema_AddBool(RequestObject, 4, bSimulatedPlayer);
 
-			NetDriver->Connection->SendCommandRequest(Op.results[0].entity_id, &CommandRequest, 1);
+			NetDriver->AllTheThings->Connection->SendCommandRequest(Op.results[0].entity_id, &CommandRequest, 1);
 		}
 	});
 
 	UE_LOG(LogSpatialPlayerSpawner, Log, TEXT("Sending player spawn request"));
-	NetDriver->Receiver->AddEntityQueryDelegate(RequestID, SpatialSpawnerQueryDelegate);
+	NetDriver->AllTheThings->Receiver->AddEntityQueryDelegate(RequestID, SpatialSpawnerQueryDelegate);
 
 	++NumberOfAttempts;
 }

@@ -9,6 +9,7 @@
 #include "TimerManager.h"
 
 #include "EngineClasses/SpatialActorChannel.h"
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialFastArrayNetSerialize.h"
 #include "EngineClasses/SpatialGameInstance.h"
 #include "EngineClasses/SpatialNetConnection.h"
@@ -36,11 +37,11 @@ using namespace SpatialGDK;
 void USpatialReceiver::Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager)
 {
 	NetDriver = InNetDriver;
-	StaticComponentView = InNetDriver->StaticComponentView;
-	Sender = InNetDriver->Sender;
-	PackageMap = InNetDriver->PackageMap;
-	ClassInfoManager = InNetDriver->ClassInfoManager;
-	GlobalStateManager = InNetDriver->GlobalStateManager;
+	StaticComponentView = InNetDriver->AllTheThings->StaticComponentView;
+	Sender = InNetDriver->AllTheThings->Sender;
+	PackageMap = InNetDriver->AllTheThings->PackageMap;
+	ClassInfoManager = InNetDriver->AllTheThings->ClassInfoManager;
+	GlobalStateManager = InNetDriver->AllTheThings->GlobalStateManager;
 	TimerManager = InTimerManager;
 
 	IncomingRPCs.BindProcessingFunction(FProcessRPCDelegate::CreateUObject(this, &USpatialReceiver::ApplyRPC));
@@ -277,7 +278,7 @@ void USpatialReceiver::HandleActorAuthority(const Worker_AuthorityChangeOp& Op)
 		return;
 	}
 
-	AActor* Actor = Cast<AActor>(NetDriver->PackageMap->GetObjectFromEntityId(Op.entity_id));
+	AActor* Actor = Cast<AActor>(NetDriver->AllTheThings->PackageMap->GetObjectFromEntityId(Op.entity_id));
 	if (Actor == nullptr)
 	{
 		return;
@@ -620,7 +621,7 @@ void USpatialReceiver::RemoveActor(Worker_EntityId EntityId)
 
 	AActor* Actor = Cast<AActor>(WeakActor.Get());
 
-	UE_LOG(LogSpatialReceiver, Verbose, TEXT("Worker %s Remove Actor: %s %lld"), *NetDriver->Connection->GetWorkerId(), Actor && !Actor->IsPendingKill() ? *Actor->GetName() : TEXT("nullptr"), EntityId);
+	UE_LOG(LogSpatialReceiver, Verbose, TEXT("Worker %s Remove Actor: %s %lld"), *NetDriver->AllTheThings->Connection->GetWorkerId(), Actor && !Actor->IsPendingKill() ? *Actor->GetName() : TEXT("nullptr"), EntityId);
 
 	// Cleanup pending add components if any exist.
 	if (USpatialActorChannel* ActorChannel = NetDriver->GetActorChannelByEntityId(EntityId))
@@ -721,7 +722,7 @@ void USpatialReceiver::QueryForStartupActor(AActor* Actor, Worker_EntityId Entit
 	StartupActorQuery.result_type = WORKER_RESULT_TYPE_COUNT;
 
 	Worker_RequestId RequestID;
-	RequestID = NetDriver->Connection->SendEntityQueryRequest(&StartupActorQuery);
+	RequestID = NetDriver->AllTheThings->Connection->SendEntityQueryRequest(&StartupActorQuery);
 
 	EntityQueryDelegate StartupActorDelegate;
 	TWeakObjectPtr<AActor> WeakActor(Actor);
@@ -1091,10 +1092,10 @@ void USpatialReceiver::OnComponentUpdate(const Worker_ComponentUpdateOp& Op)
 		GlobalStateManager->LinkAllExistingSingletonActors();
 		return;
 	case SpatialConstants::DEPLOYMENT_MAP_COMPONENT_ID:
-		NetDriver->GlobalStateManager->ApplyDeploymentMapUpdate(Op.update);
+		NetDriver->AllTheThings->GlobalStateManager->ApplyDeploymentMapUpdate(Op.update);
 		return;
 	case SpatialConstants::STARTUP_ACTOR_MANAGER_COMPONENT_ID:
-		NetDriver->GlobalStateManager->ApplyStartupActorManagerUpdate(Op.update);
+		NetDriver->AllTheThings->GlobalStateManager->ApplyStartupActorManagerUpdate(Op.update);
 		return;
 	case SpatialConstants::CLIENT_RPC_ENDPOINT_COMPONENT_ID:
 	case SpatialConstants::SERVER_RPC_ENDPOINT_COMPONENT_ID:
@@ -1111,7 +1112,7 @@ void USpatialReceiver::OnComponentUpdate(const Worker_ComponentUpdateOp& Op)
 	USpatialActorChannel* Channel = NetDriver->GetActorChannelByEntityId(Op.entity_id);
 	if (Channel == nullptr)
 	{
-		UE_LOG(LogSpatialReceiver, Verbose, TEXT("Worker: %s Entity: %d Component: %d - No actor channel for update. This most likely occured due to the component updates that are sent when authority is lost during entity deletion."), *NetDriver->Connection->GetWorkerId(), Op.entity_id, Op.update.component_id);
+		UE_LOG(LogSpatialReceiver, Verbose, TEXT("Worker: %s Entity: %d Component: %d - No actor channel for update. This most likely occured due to the component updates that are sent when authority is lost during entity deletion."), *NetDriver->AllTheThings->Connection->GetWorkerId(), Op.entity_id, Op.update.component_id);
 		return;
 	}
 
@@ -1245,7 +1246,7 @@ void USpatialReceiver::OnCommandRequest(const Worker_CommandRequestOp& Op)
 		// 1. The attribute of the worker type
 		// 2. The attribute of the specific worker that sent the request
 		// We want to give authority to the specific worker, so we grab the second element from the attribute set.
-		NetDriver->PlayerSpawner->ReceivePlayerSpawnRequest(Payload, Op.caller_attribute_set.attributes[1], Op.request_id);
+		NetDriver->AllTheThings->PlayerSpawner->ReceivePlayerSpawnRequest(Payload, Op.caller_attribute_set.attributes[1], Op.request_id);
 		return;
 	}
 	else if (Op.request.component_id == SpatialConstants::RPCS_ON_ENTITY_CREATION_ID && CommandIndex == SpatialConstants::CLEAR_RPCS_ON_ENTITY_CREATION)
@@ -1257,7 +1258,7 @@ void USpatialReceiver::OnCommandRequest(const Worker_CommandRequestOp& Op)
 #if WITH_EDITOR
 	else if (Op.request.component_id == SpatialConstants::GSM_SHUTDOWN_COMPONENT_ID && CommandIndex == SpatialConstants::SHUTDOWN_MULTI_PROCESS_REQUEST_ID)
 	{
-		NetDriver->GlobalStateManager->ReceiveShutdownMultiProcessRequest();
+		NetDriver->AllTheThings->GlobalStateManager->ReceiveShutdownMultiProcessRequest();
 		return;
 	}
 #endif // WITH_EDITOR
@@ -1267,15 +1268,15 @@ void USpatialReceiver::OnCommandRequest(const Worker_CommandRequestOp& Op)
 		switch (CommandIndex)
 		{
 		case SpatialConstants::DEBUG_METRICS_START_RPC_METRICS_ID:
-			NetDriver->SpatialMetrics->OnStartRPCMetricsCommand();
+			NetDriver->AllTheThings->SpatialMetrics->OnStartRPCMetricsCommand();
 			break;
 		case SpatialConstants::DEBUG_METRICS_STOP_RPC_METRICS_ID:
-			NetDriver->SpatialMetrics->OnStopRPCMetricsCommand();
+			NetDriver->AllTheThings->SpatialMetrics->OnStopRPCMetricsCommand();
 			break;
 		case SpatialConstants::DEBUG_METRICS_MODIFY_SETTINGS_ID:
 		{
 			Schema_Object* Payload = Schema_GetCommandRequestObject(Op.request.schema_type);
-			NetDriver->SpatialMetrics->OnModifySettingCommand(Payload);
+			NetDriver->AllTheThings->SpatialMetrics->OnModifySettingCommand(Payload);
 			break;
 		}
 		default:
@@ -1315,7 +1316,7 @@ void USpatialReceiver::OnCommandResponse(const Worker_CommandResponseOp& Op)
 {
 	if (Op.response.component_id == SpatialConstants::PLAYER_SPAWNER_COMPONENT_ID)
 	{
-		NetDriver->PlayerSpawner->ReceivePlayerSpawnResponse(Op);
+		NetDriver->AllTheThings->PlayerSpawner->ReceivePlayerSpawnResponse(Op);
 		return;
 	}
 

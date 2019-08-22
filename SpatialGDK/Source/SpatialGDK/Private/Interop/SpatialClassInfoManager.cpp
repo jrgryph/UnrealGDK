@@ -15,6 +15,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #endif
 
+#include "EngineClasses/SpatialBigBlob.h"
 #include "EngineClasses/SpatialNetDriver.h"
 #include "EngineClasses/SpatialPackageMapClient.h"
 #include "Utils/ActorGroupManager.h"
@@ -300,7 +301,7 @@ const FClassInfo& USpatialClassInfoManager::GetOrCreateClassInfoByObject(UObject
 	{
 		check(Object->GetTypedOuter<AActor>() != nullptr);
 
-		FUnrealObjectRef ObjectRef = NetDriver->PackageMap->GetUnrealObjectRefFromObject(Object);
+		FUnrealObjectRef ObjectRef = NetDriver->AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Object);
 
 		check(ObjectRef.IsValid());
 

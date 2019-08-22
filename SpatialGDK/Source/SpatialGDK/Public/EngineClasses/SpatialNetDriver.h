@@ -18,6 +18,8 @@
 
 #include "SpatialNetDriver.generated.h"
 
+class USpatialBigBlob;
+
 class USpatialActorChannel;
 class USpatialNetConnection;
 class USpatialPackageMapClient;
@@ -104,34 +106,7 @@ public:
 
 	void WipeWorld(const USpatialNetDriver::PostWorldWipeDelegate& LoadSnapshotAfterWorldWipe);
 
-	UPROPERTY()
-	USpatialWorkerConnection* Connection;
-	UPROPERTY()
-	USpatialDispatcher* Dispatcher;
-	UPROPERTY()
-	USpatialSender* Sender;
-	UPROPERTY()
-	USpatialReceiver* Receiver;
-	UPROPERTY()
-	UActorGroupManager* ActorGroupManager;
-	UPROPERTY()
-	USpatialClassInfoManager* ClassInfoManager;
-	UPROPERTY()
-	UGlobalStateManager* GlobalStateManager;
-	UPROPERTY()
-	USpatialPlayerSpawner* PlayerSpawner;
-	UPROPERTY()
-	USpatialPackageMapClient* PackageMap;
-	UPROPERTY()
-	USpatialStaticComponentView* StaticComponentView;
-	UPROPERTY()
-	USnapshotManager* SnapshotManager;
-	UPROPERTY()
-	UEntityPool* EntityPool;
-	UPROPERTY()
-	USpatialMetrics* SpatialMetrics;
-	UPROPERTY()
-	ASpatialMetricsDisplay* SpatialMetricsDisplay;
+	USpatialBigBlob* AllTheThings;
 
 	Worker_EntityId WorkerEntityId = SpatialConstants::INVALID_ENTITY_ID;
 
@@ -175,8 +150,6 @@ private:
 
 	TMap<Worker_EntityId_Key, USpatialActorChannel*> EntityToActorChannel;
 	TArray<Worker_OpList*> QueuedStartupOpLists;
-
-	FTimerManager TimerManager;
 
 	bool bAuthoritativeDestruction;
 	bool bConnectAsClient;

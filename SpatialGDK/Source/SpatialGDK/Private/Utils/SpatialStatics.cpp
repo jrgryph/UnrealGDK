@@ -4,6 +4,7 @@
 
 #include "Engine/World.h"
 #include "EngineClasses/SpatialNetDriver.h"
+#include "EngineClasses/SpatialBigBlob.h"
 #include "GeneralProjectSettings.h"
 #include "SpatialConstants.h"
 #include "SpatialGDKSettings.h"
@@ -20,7 +21,7 @@ UActorGroupManager* USpatialStatics::GetActorGroupManager(const UObject* WorldCo
 	{
 		if (const USpatialNetDriver* SpatialNetDriver = Cast<USpatialNetDriver>(World->GetNetDriver()))
 		{
-			return SpatialNetDriver->ActorGroupManager;
+			return SpatialNetDriver->AllTheThings->ActorGroupManager;
 		}
 	}
 	return nullptr;
