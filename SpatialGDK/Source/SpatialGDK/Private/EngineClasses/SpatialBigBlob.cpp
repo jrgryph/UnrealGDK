@@ -19,5 +19,19 @@
 
 USpatialBigBlob::USpatialBigBlob(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
+	, Connection(nullptr)
+	, Dispatcher(nullptr)
+	, Sender(nullptr)
+	, Receiver(nullptr)
+	, ActorGroupManager(nullptr)
+	, ClassInfoManager(nullptr)
+	, GlobalStateManager(nullptr)
+	, PlayerSpawner(nullptr)
+	, PackageMap(nullptr)
+	, StaticComponentView(nullptr)
+	, SnapshotManager(nullptr)
+	, EntityPool(nullptr)
+	, SpatialMetrics(nullptr)
+	, SpatialMetricsDisplay(nullptr)
 {
 }
