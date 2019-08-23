@@ -2,12 +2,12 @@
 
 #include "Utils/EntityPool.h"
 
-#include "TimerManager.h"
-
+#include "EngineClasses/SpatialBigBlob.h"
+#include "Interop/Connection/SpatialWorkerConnection.h"
 #include "Interop/SpatialReceiver.h"
 #include "SpatialGDKSettings.h"
 
-#include "EngineClasses/SpatialBigBlob.h"
+#include "TimerManager.h"
 
 DEFINE_LOG_CATEGORY(LogSpatialEntityPool);
 

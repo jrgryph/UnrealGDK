@@ -3,14 +3,12 @@
 #include "Interop/SpatialDispatcher.h"
 
 #include "EngineClasses/SpatialBigBlob.h"
-#include "EngineClasses/SpatialNetConnection.h"
-#include "EngineClasses/SpatialNetDriver.h"
 #include "Interop/SpatialReceiver.h"
 #include "Interop/SpatialStaticComponentView.h"
 #include "Interop/SpatialWorkerFlags.h"
-#include "UObject/UObjectIterator.h"
 #include "Utils/OpUtils.h"
 
+#include "UObject/UObjectIterator.h"
 
 DEFINE_LOG_CATEGORY(LogSpatialView);
 
