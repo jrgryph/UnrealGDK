@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 
-#include "EngineClasses/SpatialNetDriver.h"
 #include "Utils/SchemaUtils.h"
 
 #include <WorkerSDK/improbable/c_schema.h>
@@ -20,6 +19,7 @@ struct EntityRange
 	uint32 EntityRangeId; // Used to identify an entity range when it has expired.
 };
 
+class USpatialBigBlob;
 class USpatialReceiver;
 class FTimerManager;
 
@@ -31,7 +31,7 @@ class SPATIALGDK_API UEntityPool : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(USpatialNetDriver* InNetDriver);
+	void Init(USpatialBigBlob* InAllTheThings);
 	void ReserveEntityIDs(int32 EntitiesToReserve);
 	Worker_EntityId GetNextEntityId();
 
@@ -44,7 +44,7 @@ private:
 	void OnEntityRangeExpired(uint32 ExpiringEntityRangeId);
 
 	UPROPERTY()
-	USpatialNetDriver* NetDriver;
+	USpatialBigBlob* AllTheThings;
 
 	TArray<EntityRange> ReservedEntityIDRanges;
 

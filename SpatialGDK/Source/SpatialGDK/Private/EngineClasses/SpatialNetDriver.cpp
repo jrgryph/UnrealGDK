@@ -316,15 +316,14 @@ void USpatialNetDriver::CreateAndInitializeCoreClasses()
 	// Entity Pools should never exist on clients
 	if (IsServer())
 	{
-		AllTheThings->EntityPool->Init(this);
+		AllTheThings->EntityPool = NewObject<UEntityPool>();
+		AllTheThings->EntityPool->Init(AllTheThings);
 	}
 }
 
 void USpatialNetDriver::CreateServerSpatialOSNetConnection()
 {
 	check(!bConnectAsClient);
-
-	AllTheThings->EntityPool = NewObject<UEntityPool>();
 
 	USpatialNetConnection* NetConnection = NewObject<USpatialNetConnection>(GetTransientPackage(), NetConnectionClass);
 	check(NetConnection);

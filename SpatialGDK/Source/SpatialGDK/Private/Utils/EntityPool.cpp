@@ -13,9 +13,9 @@ DEFINE_LOG_CATEGORY(LogSpatialEntityPool);
 
 using namespace SpatialGDK;
 
-void UEntityPool::Init(USpatialNetDriver* InNetDriver)
+void UEntityPool::Init(USpatialBigBlob* InAllTheThings)
 {
-	NetDriver = InNetDriver;
+	AllTheThings = InAllTheThings;
 
 	ReserveEntityIDs(GetDefault<USpatialGDKSettings>()->EntityPoolInitialReservationCount);
 }
@@ -66,7 +66,7 @@ void UEntityPool::ReserveEntityIDs(int32 EntitiesToReserve)
 
 		FTimerHandle ExpirationTimer;
 		TWeakObjectPtr<UEntityPool> WeakThis(this);
-		NetDriver->AllTheThings->TimerManager.SetTimer(ExpirationTimer, [WeakThis, ExpiringEntityRangeId = NewEntityRange.EntityRangeId]()
+		AllTheThings->TimerManager.SetTimer(ExpirationTimer, [WeakThis, ExpiringEntityRangeId = NewEntityRange.EntityRangeId]()
 		{
 			if (UEntityPool* Pool = WeakThis.Get())
 			{
@@ -82,11 +82,11 @@ void UEntityPool::ReserveEntityIDs(int32 EntitiesToReserve)
 	});
 
 	// Reserve the Entity IDs
-	Worker_RequestId ReserveRequestID = NetDriver->AllTheThings->Connection->SendReserveEntityIdsRequest(EntitiesToReserve);
+	Worker_RequestId ReserveRequestID = AllTheThings->Connection->SendReserveEntityIdsRequest(EntitiesToReserve);
 	bIsAwaitingResponse = true;
 
 	// Add the spawn delegate
-	NetDriver->AllTheThings->Receiver->AddReserveEntityIdsDelegate(ReserveRequestID, CacheEntityIDsDelegate);
+	AllTheThings->Receiver->AddReserveEntityIdsDelegate(ReserveRequestID, CacheEntityIDsDelegate);
 }
 
 void UEntityPool::OnEntityRangeExpired(uint32 ExpiringEntityRangeId)
