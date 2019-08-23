@@ -2,10 +2,11 @@
 
 #pragma once
 
+#include "EngineClasses/SpatialNetDriver.h"
+
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 
-#include "EngineClasses/SpatialNetDriver.h"
 #include "Utils/SchemaUtils.h"
 
 #include <WorkerSDK/improbable/c_schema.h>
@@ -25,16 +26,13 @@ class SPATIALGDK_API USnapshotManager : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings);
+	void Init(USpatialBigBlob* InAllTheThings);
 
 	void WorldWipe(const USpatialNetDriver::PostWorldWipeDelegate& Delegate);
 	void DeleteEntities(const Worker_EntityQueryResponseOp& Op);
 	void LoadSnapshot(const FString& SnapshotName);
 
 private:
-	UPROPERTY()
-	USpatialNetDriver* NetDriver;
-
 	UPROPERTY()
 	USpatialBigBlob* AllTheThings;
 };

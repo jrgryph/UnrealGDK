@@ -16,9 +16,10 @@
 
 DEFINE_LOG_CATEGORY(LogSpatialMetrics);
 
-void USpatialMetrics::Init(USpatialNetDriver* InNetDriver)
+void USpatialMetrics::Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings)
 {
 	NetDriver = InNetDriver;
+	AllTheThings = InAllTheThings;
 	TimeBetweenMetricsReports = GetDefault<USpatialGDKSettings>()->MetricsReportRate;
 	FramesSinceLastReport = 0;
 	TimeOfLastReport = 0.0f;
@@ -53,7 +54,7 @@ void USpatialMetrics::TickMetrics()
 	TimeOfLastReport = NetDriver->Time;
 	FramesSinceLastReport = 0;
 
-	NetDriver->AllTheThings->Connection->SendMetrics(DynamicFPSMetrics);
+	AllTheThings->Connection->SendMetrics(DynamicFPSMetrics);
 }
 
 // Load defined as performance relative to target frame time or just frame time based on config value.
@@ -87,7 +88,7 @@ void USpatialMetrics::SpatialStartRPCMetrics()
 	// If RPC tracking is activated on a client, send a command to the server to start tracking.
 	if (!NetDriver->IsServer())
 	{
-		FUnrealObjectRef PCObjectRef = NetDriver->AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Cast<APlayerController>(NetDriver->GetSpatialOSNetConnection()->OwningActor));
+		FUnrealObjectRef PCObjectRef = AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Cast<APlayerController>(NetDriver->GetSpatialOSNetConnection()->OwningActor));
 		Worker_EntityId ControllerEntityId = PCObjectRef.Entity;
 
 		if (ControllerEntityId != SpatialConstants::INVALID_ENTITY_ID)
@@ -95,7 +96,7 @@ void USpatialMetrics::SpatialStartRPCMetrics()
 			Worker_CommandRequest Request = {};
 			Request.component_id = SpatialConstants::DEBUG_METRICS_COMPONENT_ID;
 			Request.schema_type = Schema_CreateCommandRequest(SpatialConstants::DEBUG_METRICS_COMPONENT_ID, SpatialConstants::DEBUG_METRICS_START_RPC_METRICS_ID);
-			NetDriver->AllTheThings->Connection->SendCommandRequest(ControllerEntityId, &Request, SpatialConstants::DEBUG_METRICS_START_RPC_METRICS_ID);
+			AllTheThings->Connection->SendCommandRequest(ControllerEntityId, &Request, SpatialConstants::DEBUG_METRICS_START_RPC_METRICS_ID);
 		}
 		else
 		{
@@ -177,7 +178,7 @@ void USpatialMetrics::SpatialStopRPCMetrics()
 	// If RPC tracking is stopped on a client, send a command to the server to stop tracking.
 	if (!NetDriver->IsServer())
 	{
-		FUnrealObjectRef PCObjectRef = NetDriver->AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Cast<APlayerController>(NetDriver->GetSpatialOSNetConnection()->OwningActor));
+		FUnrealObjectRef PCObjectRef = AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Cast<APlayerController>(NetDriver->GetSpatialOSNetConnection()->OwningActor));
 		Worker_EntityId ControllerEntityId = PCObjectRef.Entity;
 
 		if (ControllerEntityId != SpatialConstants::INVALID_ENTITY_ID)
@@ -185,7 +186,7 @@ void USpatialMetrics::SpatialStopRPCMetrics()
 			Worker_CommandRequest Request = {};
 			Request.component_id = SpatialConstants::DEBUG_METRICS_COMPONENT_ID;
 			Request.schema_type = Schema_CreateCommandRequest(SpatialConstants::DEBUG_METRICS_COMPONENT_ID, SpatialConstants::DEBUG_METRICS_STOP_RPC_METRICS_ID);
-			NetDriver->AllTheThings->Connection->SendCommandRequest(ControllerEntityId, &Request, SpatialConstants::DEBUG_METRICS_STOP_RPC_METRICS_ID);
+			AllTheThings->Connection->SendCommandRequest(ControllerEntityId, &Request, SpatialConstants::DEBUG_METRICS_STOP_RPC_METRICS_ID);
 		}
 		else
 		{
@@ -203,7 +204,7 @@ void USpatialMetrics::SpatialModifySetting(const FString& Name, float Value)
 {
 	if (!NetDriver->IsServer())
 	{
-		FUnrealObjectRef PCObjectRef = NetDriver->AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Cast<APlayerController>(NetDriver->GetSpatialOSNetConnection()->OwningActor));
+		FUnrealObjectRef PCObjectRef = AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Cast<APlayerController>(NetDriver->GetSpatialOSNetConnection()->OwningActor));
 		Worker_EntityId ControllerEntityId = PCObjectRef.Entity;
 
 		if (ControllerEntityId != SpatialConstants::INVALID_ENTITY_ID)
@@ -216,7 +217,7 @@ void USpatialMetrics::SpatialModifySetting(const FString& Name, float Value)
 			SpatialGDK::AddStringToSchema(RequestObject, SpatialConstants::MODIFY_SETTING_PAYLOAD_NAME_ID, Name);
 			Schema_AddFloat(RequestObject, SpatialConstants::MODIFY_SETTING_PAYLOAD_VALUE_ID, Value);
 
-			NetDriver->AllTheThings->Connection->SendCommandRequest(ControllerEntityId, &Request, SpatialConstants::DEBUG_METRICS_MODIFY_SETTINGS_ID);
+			AllTheThings->Connection->SendCommandRequest(ControllerEntityId, &Request, SpatialConstants::DEBUG_METRICS_MODIFY_SETTINGS_ID);
 		}
 		else
 		{

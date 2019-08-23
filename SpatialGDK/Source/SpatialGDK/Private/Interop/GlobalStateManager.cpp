@@ -139,7 +139,7 @@ void UGlobalStateManager::SendShutdownMultiProcessRequest()
 	CommandRequest.component_id = SpatialConstants::GSM_SHUTDOWN_COMPONENT_ID;
 	CommandRequest.schema_type = Schema_CreateCommandRequest(SpatialConstants::GSM_SHUTDOWN_COMPONENT_ID, SpatialConstants::SHUTDOWN_MULTI_PROCESS_REQUEST_ID);
 
-	NetDriver->AllTheThings->Connection->SendCommandRequest(GlobalStateManagerEntityId, &CommandRequest, SpatialConstants::SHUTDOWN_MULTI_PROCESS_REQUEST_ID);
+	AllTheThings->Connection->SendCommandRequest(GlobalStateManagerEntityId, &CommandRequest, SpatialConstants::SHUTDOWN_MULTI_PROCESS_REQUEST_ID);
 }
 
 void UGlobalStateManager::ReceiveShutdownMultiProcessRequest()
@@ -180,7 +180,7 @@ void UGlobalStateManager::ReceiveShutdownAdditionalServersEvent()
 
 void UGlobalStateManager::SendShutdownAdditionalServersEvent()
 {
-	if (!NetDriver->AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::GSM_SHUTDOWN_COMPONENT_ID))
+	if (!AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::GSM_SHUTDOWN_COMPONENT_ID))
 	{
 		UE_LOG(LogGlobalStateManager, Warning, TEXT("Tried to send shutdown_additional_servers event on the GSM but this worker does not have authority."));
 		return;
@@ -193,7 +193,7 @@ void UGlobalStateManager::SendShutdownAdditionalServersEvent()
 	Schema_Object* EventsObject = Schema_GetComponentUpdateEvents(ComponentUpdate.schema_type);
 	Schema_AddObject(EventsObject, SpatialConstants::SHUTDOWN_ADDITIONAL_SERVERS_EVENT_ID);
 
-	NetDriver->AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &ComponentUpdate);
+	AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &ComponentUpdate);
 }
 #endif // WITH_EDITOR
 
@@ -274,7 +274,7 @@ void UGlobalStateManager::LinkExistingSingletonActor(const UClass* SingletonActo
 	}
 
 	// Since the entity already exists, we have to handle setting up the PackageMap properly for this Actor
-	NetDriver->AllTheThings->PackageMap->ResolveEntityActor(SingletonActor, SingletonEntityId);
+	AllTheThings->PackageMap->ResolveEntityActor(SingletonActor, SingletonEntityId);
 
 	Channel->SetChannelActor(SingletonActor);
 
@@ -320,7 +320,7 @@ USpatialActorChannel* UGlobalStateManager::AddSingleton(AActor* SingletonActor)
 		return Channel;
 	}
 
-	bool bHasGSMAuthority = NetDriver->AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::SINGLETON_MANAGER_COMPONENT_ID);
+	bool bHasGSMAuthority = AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::SINGLETON_MANAGER_COMPONENT_ID);
 	if (bHasGSMAuthority)
 	{
 		// We have control over the GSM, so can safely setup a new channel and let it allocate an entity id
@@ -335,8 +335,8 @@ USpatialActorChannel* UGlobalStateManager::AddSingleton(AActor* SingletonActor)
 		// Otherwise SetChannelActor will issue a new entity id request
 		if (const Worker_EntityId* SingletonEntityId = SingletonNameToEntityId.Find(SingletonActorClass->GetPathName()))
 		{
-			check(NetDriver->AllTheThings->PackageMap->GetObjectFromEntityId(*SingletonEntityId) == nullptr);
-			NetDriver->AllTheThings->PackageMap->ResolveEntityActor(SingletonActor, *SingletonEntityId);
+			check(AllTheThings->PackageMap->GetObjectFromEntityId(*SingletonEntityId) == nullptr);
+			AllTheThings->PackageMap->ResolveEntityActor(SingletonActor, *SingletonEntityId);
 			if (AllTheThings->StaticComponentView->GetAuthority(*SingletonEntityId, SpatialConstants::POSITION_COMPONENT_ID) != WORKER_AUTHORITY_AUTHORITATIVE)
 			{
 				SingletonActor->Role = ROLE_SimulatedProxy;
@@ -381,7 +381,7 @@ void UGlobalStateManager::UpdateSingletonEntityId(const FString& ClassName, cons
 	Worker_EntityId& EntityId = SingletonNameToEntityId.FindOrAdd(ClassName);
 	EntityId = SingletonEntityId;
 
-	if (!NetDriver->AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::SINGLETON_MANAGER_COMPONENT_ID))
+	if (!AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::SINGLETON_MANAGER_COMPONENT_ID))
 	{
 		UE_LOG(LogGlobalStateManager, Warning, TEXT("UpdateSingletonEntityId: no authority over the GSM! Update will not be sent. Singleton class: %s, entity: %lld"), *ClassName, SingletonEntityId);
 		return;
@@ -394,7 +394,7 @@ void UGlobalStateManager::UpdateSingletonEntityId(const FString& ClassName, cons
 
 	AddStringToEntityMapToSchema(UpdateObject, 1, SingletonNameToEntityId);
 
-	NetDriver->AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &Update);
+	AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &Update);
 }
 
 bool UGlobalStateManager::IsSingletonEntity(Worker_EntityId EntityId) const
@@ -411,7 +411,7 @@ bool UGlobalStateManager::IsSingletonEntity(Worker_EntityId EntityId) const
 
 void UGlobalStateManager::SetAcceptingPlayers(bool bInAcceptingPlayers)
 {
-	check(NetDriver->AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::DEPLOYMENT_MAP_COMPONENT_ID));
+	check(AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::DEPLOYMENT_MAP_COMPONENT_ID));
 
 	// Send the component update that we can now accept players.
 	UE_LOG(LogGlobalStateManager, Log, TEXT("Setting accepting players to '%s'"), bInAcceptingPlayers ? TEXT("true") : TEXT("false"));
@@ -428,12 +428,12 @@ void UGlobalStateManager::SetAcceptingPlayers(bool bInAcceptingPlayers)
 
 	// Component updates are short circuited so we set the updated state here and then send the component update.
 	bAcceptingPlayers = bInAcceptingPlayers;
-	NetDriver->AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &Update);
+	AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &Update);
 }
 
 void UGlobalStateManager::SetCanBeginPlay(const bool bInCanBeginPlay)
 {
-	check(NetDriver->AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::STARTUP_ACTOR_MANAGER_COMPONENT_ID));
+	check(AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::STARTUP_ACTOR_MANAGER_COMPONENT_ID));
 
 	Worker_ComponentUpdate Update = {};
 	Update.component_id = SpatialConstants::STARTUP_ACTOR_MANAGER_COMPONENT_ID;
@@ -443,7 +443,7 @@ void UGlobalStateManager::SetCanBeginPlay(const bool bInCanBeginPlay)
 	Schema_AddBool(UpdateObject, SpatialConstants::STARTUP_ACTOR_MANAGER_CAN_BEGIN_PLAY_ID, static_cast<uint8_t>(bInCanBeginPlay));
 
 	bCanBeginPlay = bInCanBeginPlay;
-	NetDriver->AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &Update);
+	AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &Update);
 }
 
 void UGlobalStateManager::AuthorityChanged(const Worker_AuthorityChangeOp& AuthOp)
@@ -507,7 +507,7 @@ void UGlobalStateManager::BeginDestroy()
 	Super::BeginDestroy();
 
 #if WITH_EDITOR
-	if (NetDriver != nullptr && NetDriver->AllTheThings != nullptr && NetDriver->AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::STARTUP_ACTOR_MANAGER_COMPONENT_ID))
+	if (AllTheThings != nullptr && AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::STARTUP_ACTOR_MANAGER_COMPONENT_ID))
 	{
 		// If we are deleting dynamically spawned entities, we need to
 		if (GetDefault<ULevelEditorPlaySettings>()->GetDeleteDynamicEntities())
@@ -521,7 +521,7 @@ void UGlobalStateManager::BeginDestroy()
 			Update.schema_type = Schema_CreateComponentUpdate(SpatialConstants::SINGLETON_MANAGER_COMPONENT_ID);
 			Schema_AddComponentUpdateClearedField(Update.schema_type, SpatialConstants::SINGLETON_MANAGER_SINGLETON_NAME_TO_ENTITY_ID);
 
-			NetDriver->AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &Update);
+			AllTheThings->Connection->SendComponentUpdate(GlobalStateManagerEntityId, &Update);
 		}
 	}
 #endif
@@ -529,7 +529,7 @@ void UGlobalStateManager::BeginDestroy()
 
 bool UGlobalStateManager::HasAuthority()
 {
-	return NetDriver->AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::SINGLETON_MANAGER_COMPONENT_ID);
+	return AllTheThings->StaticComponentView->HasAuthority(GlobalStateManagerEntityId, SpatialConstants::SINGLETON_MANAGER_COMPONENT_ID);
 }
 
 void UGlobalStateManager::BecomeAuthoritativeOverAllActors()
@@ -572,7 +572,7 @@ void UGlobalStateManager::QueryGSM(bool bRetryUntilAcceptingPlayers)
 	GSMQuery.result_type = WORKER_RESULT_TYPE_SNAPSHOT;
 
 	Worker_RequestId RequestID;
-	RequestID = NetDriver->AllTheThings->Connection->SendEntityQueryRequest(&GSMQuery);
+	RequestID = AllTheThings->Connection->SendEntityQueryRequest(&GSMQuery);
 
 	EntityQueryDelegate GSMQueryDelegate;
 	GSMQueryDelegate.BindLambda([this, bRetryUntilAcceptingPlayers](const Worker_EntityQueryResponseOp& Op)

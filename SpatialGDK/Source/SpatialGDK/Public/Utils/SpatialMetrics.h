@@ -12,6 +12,7 @@
 #include "SpatialMetrics.generated.h"
 
 struct Schema_Object;
+class USpatialBigBlob;
 class USpatialNetDriver;
 class USpatialWorkerConnection;
 
@@ -23,7 +24,7 @@ class USpatialMetrics : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(USpatialNetDriver* InNetDriver);
+	void Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings);
 
 	void TickMetrics();
 
@@ -49,6 +50,9 @@ public:
 private:
 	UPROPERTY()
 	USpatialNetDriver* NetDriver;
+
+	UPROPERTY()
+	USpatialBigBlob* AllTheThings;
 
 	float TimeOfLastReport;
 	float TimeSinceLastReport;

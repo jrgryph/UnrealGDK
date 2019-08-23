@@ -309,9 +309,9 @@ void USpatialNetDriver::CreateAndInitializeCoreClasses()
 	AllTheThings->Sender->Init(this, AllTheThings);
 	AllTheThings->Receiver->Init(this, AllTheThings);
 	AllTheThings->GlobalStateManager->Init(this, AllTheThings);
-	AllTheThings->SnapshotManager->Init(this, AllTheThings);
+	AllTheThings->SnapshotManager->Init(AllTheThings);
 	AllTheThings->PlayerSpawner->Init(this);
-	AllTheThings->SpatialMetrics->Init(this);
+	AllTheThings->SpatialMetrics->Init(this, AllTheThings);
 
 	// Entity Pools should never exist on clients
 	if (IsServer())
