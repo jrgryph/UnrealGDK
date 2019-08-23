@@ -23,6 +23,7 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogSpatialReceiver, Log, All);
 
+class USpatialBigBlob;
 class USpatialNetConnection;
 class USpatialSender;
 class UGlobalStateManager;
@@ -113,7 +114,7 @@ class USpatialReceiver : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(USpatialNetDriver* NetDriver, FTimerManager* InTimerManager);
+	void Init(USpatialNetDriver* NetDriver, USpatialBigBlob* InAllTheThings);
 
 	// Dispatcher Calls
 	void OnCriticalSection(bool InCriticalSection);
@@ -215,21 +216,7 @@ private:
 	USpatialNetDriver* NetDriver;
 
 	UPROPERTY()
-	USpatialStaticComponentView* StaticComponentView;
-
-	UPROPERTY()
-	USpatialSender* Sender;
-
-	UPROPERTY()
-	USpatialPackageMapClient* PackageMap;
-
-	UPROPERTY()
-	USpatialClassInfoManager* ClassInfoManager;
-
-	UPROPERTY()
-	UGlobalStateManager* GlobalStateManager;
-
-	FTimerManager* TimerManager;
+	USpatialBigBlob* AllTheThings;
 
 	// TODO: Figure out how to remove entries when Channel/Actor gets deleted - UNR:100
 	TMap<FChannelObjectPair, FObjectReferencesMap> UnresolvedRefsMap;

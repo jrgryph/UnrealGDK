@@ -106,6 +106,7 @@ public:
 
 	void WipeWorld(const USpatialNetDriver::PostWorldWipeDelegate& LoadSnapshotAfterWorldWipe);
 
+	UPROPERTY()
 	USpatialBigBlob* AllTheThings;
 
 	Worker_EntityId WorkerEntityId = SpatialConstants::INVALID_ENTITY_ID;

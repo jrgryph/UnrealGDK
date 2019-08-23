@@ -305,18 +305,18 @@ void USpatialNetDriver::CreateAndInitializeCoreClasses()
 
 	AllTheThings->PackageMap = Cast<USpatialPackageMapClient>(GetSpatialOSNetConnection()->PackageMap);
 	AllTheThings->PackageMap->Init(this);
-	AllTheThings->Dispatcher->Init(this);
-	AllTheThings->Sender->Init(this, &AllTheThings->TimerManager);
-	AllTheThings->Receiver->Init(this, &AllTheThings->TimerManager);
-	AllTheThings->GlobalStateManager->Init(this, &AllTheThings->TimerManager);
-	AllTheThings->SnapshotManager->Init(this);
-	AllTheThings->PlayerSpawner->Init(this, &AllTheThings->TimerManager);
+	AllTheThings->Dispatcher->Init(AllTheThings);
+	AllTheThings->Sender->Init(this, AllTheThings);
+	AllTheThings->Receiver->Init(this, AllTheThings);
+	AllTheThings->GlobalStateManager->Init(this, AllTheThings);
+	AllTheThings->SnapshotManager->Init(this, AllTheThings);
+	AllTheThings->PlayerSpawner->Init(this);
 	AllTheThings->SpatialMetrics->Init(this);
 
 	// Entity Pools should never exist on clients
 	if (IsServer())
 	{
-		AllTheThings->EntityPool->Init(this, &AllTheThings->TimerManager);
+		AllTheThings->EntityPool->Init(this);
 	}
 }
 

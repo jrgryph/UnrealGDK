@@ -31,7 +31,7 @@ class SPATIALGDK_API UEntityPool : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(USpatialNetDriver* InNetDriver, FTimerManager* TimerManager);
+	void Init(USpatialNetDriver* InNetDriver);
 	void ReserveEntityIDs(int32 EntitiesToReserve);
 	Worker_EntityId GetNextEntityId();
 
@@ -46,10 +46,6 @@ private:
 	UPROPERTY()
 	USpatialNetDriver* NetDriver;
 
-	UPROPERTY()
-	USpatialReceiver* Receiver;
-
-	FTimerManager* TimerManager;
 	TArray<EntityRange> ReservedEntityIDRanges;
 
 	bool bIsReady;

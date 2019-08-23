@@ -13,6 +13,7 @@
 
 #include "GlobalStateManager.generated.h"
 
+class USpatialBigBlob;
 class USpatialNetDriver;
 class USpatialActorChannel;
 class USpatialStaticComponentView;
@@ -27,7 +28,7 @@ class SPATIALGDK_API UGlobalStateManager : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager);
+	void Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings);
 
 	void ApplySingletonManagerData(const Worker_ComponentData& Data);
 	void ApplyDeploymentMapData(const Worker_ComponentData& Data);
@@ -104,13 +105,5 @@ private:
 	USpatialNetDriver* NetDriver;
 
 	UPROPERTY()
-	USpatialStaticComponentView* StaticComponentView;
-
-	UPROPERTY()
-	USpatialSender* Sender;
-
-	UPROPERTY()
-	USpatialReceiver* Receiver;
-
-	FTimerManager* TimerManager;
+	USpatialBigBlob* AllTheThings;
 };

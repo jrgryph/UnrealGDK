@@ -60,9 +60,6 @@ public:
 
 private:
 	UPROPERTY()
-	USpatialClassInfoManager* ClassInfoManager;
-
-	UPROPERTY()
 	USpatialNetDriver* NetDriver;
 
 	// Entities that have been assigned on this server and not created yet

@@ -14,15 +14,16 @@
 
 DEFINE_LOG_CATEGORY(LogSpatialView);
 
-void USpatialDispatcher::Init(USpatialNetDriver* InNetDriver)
+void USpatialDispatcher::Init(USpatialBigBlob* InAllTheThings)
 {
-	NetDriver = InNetDriver;
-	Receiver = InNetDriver->AllTheThings->Receiver;
-	StaticComponentView = InNetDriver->AllTheThings->StaticComponentView;
+	AllTheThings = InAllTheThings;
 }
 
 void USpatialDispatcher::ProcessOps(Worker_OpList* OpList)
 {
+	USpatialReceiver* Receiver = AllTheThings->Receiver;
+	USpatialStaticComponentView* StaticComponentView = AllTheThings->StaticComponentView;
+
 	for (size_t i = 0; i < OpList->op_count; ++i)
 	{
 		Worker_Op* Op = &OpList->ops[i];
@@ -132,7 +133,7 @@ void USpatialDispatcher::ProcessExternalSchemaOp(Worker_Op* Op)
 	switch (Op->op_type)
 	{
 	case WORKER_OP_TYPE_AUTHORITY_CHANGE:
-		StaticComponentView->OnAuthorityChange(Op->authority_change);
+		AllTheThings->StaticComponentView->OnAuthorityChange(Op->authority_change);
 		// Intentional fall-through
 	case WORKER_OP_TYPE_ADD_COMPONENT:
 	case WORKER_OP_TYPE_REMOVE_COMPONENT:

@@ -17,7 +17,7 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogSpatialView, Log, All);
 
-class USpatialNetDriver;
+class USpatialBigBlob;
 class USpatialReceiver;
 class USpatialStaticComponentView;
 
@@ -29,7 +29,7 @@ class SPATIALGDK_API USpatialDispatcher : public UObject
 public:
 	using FCallbackId = uint32;
 
-	void Init(USpatialNetDriver* NetDriver);
+	void Init(USpatialBigBlob* InAllTheThings);
 	void ProcessOps(Worker_OpList* OpList);
 	// The following 2 methods should *only* be used by the Startup OpList Queueing flow
 	// from the SpatialNetDriver, and should be temporary since an alternative solution will be available via the Worker SDK soon.
@@ -68,13 +68,8 @@ private:
 	void RunCallbacks(Worker_ComponentId ComponentId, const Worker_Op* Op);
 
 	UPROPERTY()
-	USpatialNetDriver* NetDriver;
+	USpatialBigBlob* AllTheThings;
 
-	UPROPERTY()
-	USpatialReceiver* Receiver;
-
-	UPROPERTY()
-	USpatialStaticComponentView* StaticComponentView;
 
 	// This index is incremented and returned every time an AddOpCallback function is called.
 	// CallbackIds enable you to deregister callbacks using the RemoveOpCallback function. 

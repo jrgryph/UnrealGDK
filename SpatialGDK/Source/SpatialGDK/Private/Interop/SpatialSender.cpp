@@ -59,17 +59,10 @@ FPendingRPC::FPendingRPC(FPendingRPC&& Other)
 {
 }
 
-void USpatialSender::Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager)
+void USpatialSender::Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings)
 {
 	NetDriver = InNetDriver;
-	StaticComponentView = InNetDriver->AllTheThings->StaticComponentView;
-	Connection = InNetDriver->AllTheThings->Connection;
-	Receiver = InNetDriver->AllTheThings->Receiver;
-	PackageMap = InNetDriver->AllTheThings->PackageMap;
-	ClassInfoManager = InNetDriver->AllTheThings->ClassInfoManager;
-	ActorGroupManager = InNetDriver->AllTheThings->ActorGroupManager;
-	TimerManager = InTimerManager;
-
+	AllTheThings = InAllTheThings;
 	OutgoingRPCs.BindProcessingFunction(FProcessRPCDelegate::CreateUObject(this, &USpatialSender::SendRPC));
 }
 
@@ -111,7 +104,7 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 		ReadAcl = AnyServerOrClientRequirementSet;
 	}
 
-	const FClassInfo& Info = ClassInfoManager->GetOrCreateClassInfoByClass(Class);
+	const FClassInfo& Info = AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Class);
 
 	const WorkerAttributeSet WorkerAttribute{ Info.WorkerType.ToString() };
 	const WorkerRequirementSet AuthoritativeWorkerRequirementSet = { WorkerAttribute };
@@ -158,7 +151,7 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 		const FClassInfo& SubobjectInfo = SubobjectInfoPair.Value.Get();
 
 		// Static subobjects aren't guaranteed to exist on actor instances, check they are present before adding write acls
-		TWeakObjectPtr<UObject> Subobject = PackageMap->GetObjectFromUnrealObjectRef(FUnrealObjectRef(Channel->GetEntityId(), SubobjectInfoPair.Key));
+		TWeakObjectPtr<UObject> Subobject = AllTheThings->PackageMap->GetObjectFromUnrealObjectRef(FUnrealObjectRef(Channel->GetEntityId(), SubobjectInfoPair.Key));
 		if (!Subobject.IsValid())
 		{
 			continue;
@@ -185,11 +178,11 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 	{
 		// Since we've already received the EntityId for this Actor. It is guaranteed to be resolved
 		// with the package map by this point
-		FUnrealObjectRef OuterObjectRef = PackageMap->GetUnrealObjectRefFromObject(Actor->GetOuter());
+		FUnrealObjectRef OuterObjectRef = AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Actor->GetOuter());
 		if (OuterObjectRef == FUnrealObjectRef::UNRESOLVED_OBJECT_REF)
 		{
-			FNetworkGUID NetGUID = PackageMap->ResolveStablyNamedObject(Actor->GetOuter());
-			OuterObjectRef = PackageMap->GetUnrealObjectRefFromNetGUID(NetGUID);
+			FNetworkGUID NetGUID = AllTheThings->PackageMap->ResolveStablyNamedObject(Actor->GetOuter());
+			OuterObjectRef = AllTheThings->PackageMap->GetUnrealObjectRefFromNetGUID(NetGUID);
 		}
 
 		// No path in SpatialOS should contain a PIE prefix.
@@ -268,7 +261,7 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 			}
 
 			// If this object is not in the PackageMap, it has been dynamically created.
-			if (!PackageMap->GetUnrealObjectRefFromObject(Subobject).IsValid())
+			if (!AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Subobject).IsValid())
 			{
 				const FClassInfo* SubobjectInfo = Channel->TryResolveNewDynamicSubobjectAndGetClassInfo(Subobject);
 
@@ -287,7 +280,7 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 				});
 			}
 
-			const FClassInfo& SubobjectInfo = ClassInfoManager->GetOrCreateClassInfoByObject(Subobject);
+			const FClassInfo& SubobjectInfo = AllTheThings->ClassInfoManager->GetOrCreateClassInfoByObject(Subobject);
 
 			FRepChangeState SubobjectRepChanges = Channel->CreateInitialRepChangeState(Subobject);
 			FHandoverChangeState SubobjectHandoverChanges = Channel->CreateInitialHandoverChangeState(SubobjectInfo);
@@ -305,7 +298,7 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 		const FClassInfo& SubobjectInfo = SubobjectInfoPair.Value.Get();
 
 		// Static subobjects aren't guaranteed to exist on actor instances, check they are present before adding write acls
-		TWeakObjectPtr<UObject> WeakSubobject = PackageMap->GetObjectFromUnrealObjectRef(FUnrealObjectRef(Channel->GetEntityId(), SubobjectInfoPair.Key));
+		TWeakObjectPtr<UObject> WeakSubobject = AllTheThings->PackageMap->GetObjectFromUnrealObjectRef(FUnrealObjectRef(Channel->GetEntityId(), SubobjectInfoPair.Key));
 		if (!WeakSubobject.IsValid())
 		{
 			continue;
@@ -335,7 +328,7 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 	ComponentDatas.Add(EntityAcl(ReadAcl, ComponentWriteAcl).CreateEntityAclData());
 
 	Worker_EntityId EntityId = Channel->GetEntityId();
-	Worker_RequestId CreateEntityRequestId = Connection->SendCreateEntityRequest(MoveTemp(ComponentDatas), &EntityId);
+	Worker_RequestId CreateEntityRequestId = AllTheThings->Connection->SendCreateEntityRequest(MoveTemp(ComponentDatas), &EntityId);
 	PendingActorRequests.Add(CreateEntityRequestId, Channel);
 
 	return CreateEntityRequestId;
@@ -346,7 +339,7 @@ Worker_ComponentData USpatialSender::CreateLevelComponentData(AActor* Actor)
 	UWorld* ActorWorld = Actor->GetTypedOuter<UWorld>();
 	if (ActorWorld != NetDriver->World)
 	{
-		const uint32 ComponentId = ClassInfoManager->GetComponentIdFromLevelPath(ActorWorld->GetOuter()->GetPathName());
+		const uint32 ComponentId = AllTheThings->ClassInfoManager->GetComponentIdFromLevelPath(ActorWorld->GetOuter()->GetPathName());
 		if (ComponentId != SpatialConstants::INVALID_COMPONENT_ID)
 		{
 			return ComponentFactory::CreateEmptyComponentData(ComponentId);
@@ -372,7 +365,7 @@ void USpatialSender::SendAddComponent(USpatialActorChannel* Channel, UObject* Su
 
 	for (Worker_ComponentData& ComponentData : SubobjectDatas)
 	{
-		Connection->SendAddComponent(Channel->GetEntityId(), &ComponentData);
+		AllTheThings->Connection->SendAddComponent(Channel->GetEntityId(), &ComponentData);
 	}
 
 	Channel->PendingDynamicSubobjects.Remove(TWeakObjectPtr<UObject>(Subobject));
@@ -380,11 +373,11 @@ void USpatialSender::SendAddComponent(USpatialActorChannel* Channel, UObject* Su
 
 void USpatialSender::GainAuthorityThenAddComponent(USpatialActorChannel* Channel, UObject* Object, const FClassInfo* Info)
 {
-	const FClassInfo& ActorInfo = ClassInfoManager->GetOrCreateClassInfoByClass(Channel->Actor->GetClass());
+	const FClassInfo& ActorInfo = AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Channel->Actor->GetClass());
 	const WorkerAttributeSet WorkerAttribute{ ActorInfo.WorkerType.ToString() };
 	const WorkerRequirementSet AuthoritativeWorkerRequirementSet = { WorkerAttribute };
 
-	EntityAcl* EntityACL = StaticComponentView->GetComponentData<EntityAcl>(Channel->GetEntityId());
+	EntityAcl* EntityACL = AllTheThings->StaticComponentView->GetComponentData<EntityAcl>(Channel->GetEntityId());
 
 	TSharedRef<FPendingSubobjectAttachment> PendingSubobjectAttachment = MakeShared<FPendingSubobjectAttachment>();
 	PendingSubobjectAttachment->Subobject = Object;
@@ -399,7 +392,7 @@ void USpatialSender::GainAuthorityThenAddComponent(USpatialActorChannel* Channel
 			// For each valid ComponentId, we need to wait for its authority delegation before
 			// adding the subobject.
 			PendingSubobjectAttachment->PendingAuthorityDelegations.Add(ComponentId);
-			Receiver->PendingEntitySubobjectDelegations.Add(
+			AllTheThings->Receiver->PendingEntitySubobjectDelegations.Add(
 				MakeTuple(static_cast<Worker_EntityId_Key>(Channel->GetEntityId()), ComponentId),
 				PendingSubobjectAttachment);
 
@@ -408,7 +401,7 @@ void USpatialSender::GainAuthorityThenAddComponent(USpatialActorChannel* Channel
 	});
 
 	Worker_ComponentUpdate Update = EntityACL->CreateEntityAclUpdate();
-	Connection->SendComponentUpdate(Channel->GetEntityId(), &Update);
+	AllTheThings->Connection->SendComponentUpdate(Channel->GetEntityId(), &Update);
 }
 
 void USpatialSender::SendRemoveComponent(Worker_EntityId EntityId, const FClassInfo& Info)
@@ -421,13 +414,13 @@ void USpatialSender::SendRemoveComponent(Worker_EntityId EntityId, const FClassI
 		}
 	}
 
-	PackageMap->RemoveSubobject(FUnrealObjectRef(EntityId, Info.SchemaComponents[SCHEMA_Data]));
+	AllTheThings->PackageMap->RemoveSubobject(FUnrealObjectRef(EntityId, Info.SchemaComponents[SCHEMA_Data]));
 }
 
 // Creates an entity authoritative on this server worker, ensuring it will be able to receive updates for the GSM.
 void USpatialSender::CreateServerWorkerEntity(int AttemptCounter)
 {
-	const WorkerRequirementSet WorkerIdPermission{ { FString::Format(TEXT("workerId:{0}"), { Connection->GetWorkerId() }) } };
+	const WorkerRequirementSet WorkerIdPermission{ { FString::Format(TEXT("workerId:{0}"), { AllTheThings->Connection->GetWorkerId() }) } };
 
 	WriteAclMap ComponentWriteAcl;
 	ComponentWriteAcl.Add(SpatialConstants::POSITION_COMPONENT_ID, WorkerIdPermission);
@@ -437,11 +430,11 @@ void USpatialSender::CreateServerWorkerEntity(int AttemptCounter)
 
 	TArray<Worker_ComponentData> Components;
 	Components.Add(Position().CreatePositionData());
-	Components.Add(Metadata(FString::Format(TEXT("WorkerEntity:{0}"), { Connection->GetWorkerId() })).CreateMetadataData());
+	Components.Add(Metadata(FString::Format(TEXT("WorkerEntity:{0}"), { AllTheThings->Connection->GetWorkerId() })).CreateMetadataData());
 	Components.Add(EntityAcl(WorkerIdPermission, ComponentWriteAcl).CreateEntityAclData());
 	Components.Add(InterestFactory::CreateServerWorkerInterest().CreateInterestData());
 
-	Worker_RequestId RequestId = Connection->SendCreateEntityRequest(MoveTemp(Components), nullptr);
+	Worker_RequestId RequestId = AllTheThings->Connection->SendCreateEntityRequest(MoveTemp(Components), nullptr);
 
 	CreateEntityDelegate OnCreateWorkerEntityResponse;
 	OnCreateWorkerEntityResponse.BindLambda([WeakSender = TWeakObjectPtr<USpatialSender>(this), AttemptCounter](const Worker_CreateEntityResponseOp& Op)
@@ -474,7 +467,7 @@ void USpatialSender::CreateServerWorkerEntity(int AttemptCounter)
 
 		UE_LOG(LogSpatialSender, Warning, TEXT("Worker entity creation request timed out and will retry."));
 		FTimerHandle RetryTimer;
-		Sender->TimerManager->SetTimer(RetryTimer, [WeakSender, AttemptCounter]()
+		Sender->AllTheThings->TimerManager.SetTimer(RetryTimer, [WeakSender, AttemptCounter]()
 		{
 			if (USpatialSender* Sender = WeakSender.Get())
 			{
@@ -483,7 +476,7 @@ void USpatialSender::CreateServerWorkerEntity(int AttemptCounter)
 		}, SpatialConstants::GetCommandRetryWaitTimeSeconds(AttemptCounter), false);
 	});
 
-	Receiver->AddCreateEntityDelegate(RequestId, OnCreateWorkerEntityResponse);
+	AllTheThings->Receiver->AddCreateEntityDelegate(RequestId, OnCreateWorkerEntityResponse);
 }
 
 void USpatialSender::SendComponentUpdates(UObject* Object, const FClassInfo& Info, USpatialActorChannel* Channel, const FRepChangeState* RepChanges, const FHandoverChangeState* HandoverChanges)
@@ -511,7 +504,7 @@ void USpatialSender::SendComponentUpdates(UObject* Object, const FClassInfo& Inf
 			continue;
 		}
 
-		Connection->SendComponentUpdate(EntityId, &Update);
+		AllTheThings->Connection->SendComponentUpdate(EntityId, &Update);
 	}
 }
 
@@ -522,7 +515,7 @@ void USpatialSender::ProcessUpdatesQueuedUntilAuthority(Worker_EntityId EntityId
 	{
 		for (Worker_ComponentUpdate& Update : *UpdatesQueuedUntilAuthority)
 		{
-			Connection->SendComponentUpdate(EntityId, &Update);
+			AllTheThings->Connection->SendComponentUpdate(EntityId, &Update);
 		}
 		UpdatesQueuedUntilAuthorityMap.Remove(EntityId);
 	}
@@ -559,7 +552,7 @@ void USpatialSender::FlushPackedRPCs()
 			Schema_AddEntityId(EventData, SpatialConstants::UNREAL_PACKED_RPC_PAYLOAD_ENTITY_ID, RPC.Entity);
 		}
 
-		Connection->SendComponentUpdate(PlayerControllerEntityId, &ComponentUpdate);
+		AllTheThings->Connection->SendComponentUpdate(PlayerControllerEntityId, &ComponentUpdate);
 	}
 
 	RPCsToPack.Empty();
@@ -584,7 +577,7 @@ TArray<Worker_InterestOverride> USpatialSender::CreateComponentInterestForActor(
 {
 	TArray<Worker_InterestOverride> ComponentInterest;
 
-	const FClassInfo& ActorInfo = ClassInfoManager->GetOrCreateClassInfoByClass(Channel->Actor->GetClass());
+	const FClassInfo& ActorInfo = AllTheThings->ClassInfoManager->GetOrCreateClassInfoByClass(Channel->Actor->GetClass());
 	FillComponentInterests(ActorInfo, bIsNetOwned, ComponentInterest);
 
 	// Statically attached subobjects
@@ -597,7 +590,7 @@ TArray<Worker_InterestOverride> USpatialSender::CreateComponentInterestForActor(
 	// Subobjects dynamically created through replication
 	for (const auto& Subobject : Channel->CreateSubObjects)
 	{
-		const FClassInfo& SubobjectInfo = ClassInfoManager->GetOrCreateClassInfoByObject(Subobject);
+		const FClassInfo& SubobjectInfo = AllTheThings->ClassInfoManager->GetOrCreateClassInfoByObject(Subobject);
 		FillComponentInterests(SubobjectInfo, bIsNetOwned, ComponentInterest);
 	}
 
@@ -609,7 +602,7 @@ TArray<Worker_InterestOverride> USpatialSender::CreateComponentInterestForActor(
 
 RPCPayload USpatialSender::CreateRPCPayloadFromParams(UObject* TargetObject, const FUnrealObjectRef& TargetObjectRef, UFunction* Function, int ReliableRPCIndex, void* Params)
 {
-	const FRPCInfo& RPCInfo = ClassInfoManager->GetRPCInfo(TargetObject, Function);
+	const FRPCInfo& RPCInfo = AllTheThings->ClassInfoManager->GetRPCInfo(TargetObject, Function);
 
 	FSpatialNetBitWriter PayloadWriter = PackRPCDataToSpatialNetBitWriter(Function, Params, ReliableRPCIndex);
 
@@ -643,12 +636,12 @@ void USpatialSender::SendPositionUpdate(Worker_EntityId EntityId, const FVector&
 #endif
 
 	Worker_ComponentUpdate Update = Position::CreatePositionUpdate(Coordinates::FromFVector(Location));
-	Connection->SendComponentUpdate(EntityId, &Update);
+	AllTheThings->Connection->SendComponentUpdate(EntityId, &Update);
 }
 
 FRPCErrorInfo USpatialSender::SendRPC(const FPendingRPCParams& Params)
 {
-	TWeakObjectPtr<UObject> TargetObjectWeakPtr = PackageMap->GetObjectFromUnrealObjectRef(Params.ObjectRef);
+	TWeakObjectPtr<UObject> TargetObjectWeakPtr = AllTheThings->PackageMap->GetObjectFromUnrealObjectRef(Params.ObjectRef);
 	if (!TargetObjectWeakPtr.IsValid())
 	{
 		// Target object was destroyed before the RPC could be (re)sent
@@ -656,7 +649,7 @@ FRPCErrorInfo USpatialSender::SendRPC(const FPendingRPCParams& Params)
 	}
 	UObject* TargetObject = TargetObjectWeakPtr.Get();
 
-	const FClassInfo& ClassInfo = ClassInfoManager->GetOrCreateClassInfoByObject(TargetObject);
+	const FClassInfo& ClassInfo = AllTheThings->ClassInfoManager->GetOrCreateClassInfoByObject(TargetObject);
 	UFunction* Function = ClassInfo.RPCs[Params.Payload.Index];
 	if (Function == nullptr)
 	{
@@ -677,7 +670,7 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 		UE_LOG(LogSpatialSender, Warning, TEXT("Failed to create an Actor Channel for %s."), *TargetObject->GetName());
 		return ERPCResult::NoActorChannel;
 	}
-	const FRPCInfo& RPCInfo = ClassInfoManager->GetRPCInfo(TargetObject, Function);
+	const FRPCInfo& RPCInfo = AllTheThings->ClassInfoManager->GetRPCInfo(TargetObject, Function);
 
 	if (Channel->bCreatingNewEntity)
 	{
@@ -713,7 +706,7 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 		Worker_CommandRequest CommandRequest = CreateRPCCommandRequest(TargetObject, Payload, ComponentId, RPCInfo.Index, EntityId);
 
 		check(EntityId != SpatialConstants::INVALID_ENTITY_ID);
-		Worker_RequestId RequestId = Connection->SendCommandRequest(EntityId, &CommandRequest, SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID);
+		Worker_RequestId RequestId = AllTheThings->Connection->SendCommandRequest(EntityId, &CommandRequest, SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID);
 
 #if !UE_BUILD_SHIPPING
 		NetDriver->AllTheThings->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
@@ -723,7 +716,7 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 		{
 			UE_LOG(LogSpatialSender, Verbose, TEXT("Sending reliable command request (entity: %lld, component: %d, function: %s, attempt: 1)"),
 				EntityId, CommandRequest.component_id, *Function->GetName());
-			Receiver->AddPendingReliableRPC(RequestId, MakeShared<FReliableRPCForRetry>(TargetObject, Function, ComponentId, RPCInfo.Index, Payload.PayloadData, 0));
+			AllTheThings->Receiver->AddPendingReliableRPC(RequestId, MakeShared<FReliableRPCForRetry>(TargetObject, Function, ComponentId, RPCInfo.Index, Payload.PayloadData, 0));
 		}
 		else
 		{
@@ -739,7 +732,7 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 	case SCHEMA_ClientUnreliableRPC:
 	case SCHEMA_ServerUnreliableRPC:
 	{
-		FUnrealObjectRef TargetObjectRef = PackageMap->GetUnrealObjectRefFromObject(TargetObject);
+		FUnrealObjectRef TargetObjectRef = AllTheThings->PackageMap->GetUnrealObjectRefFromObject(TargetObject);
 		if (TargetObjectRef == FUnrealObjectRef::UNRESOLVED_OBJECT_REF)
 		{
 			return ERPCResult::UnresolvedTargetObject;
@@ -766,13 +759,13 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 
 		if (bCanPackRPC && GetDefault<USpatialGDKSettings>()->bEnableOffloading)
 		{
-			if (const AActor* TargetActor = Cast<AActor>(PackageMap->GetObjectFromEntityId(TargetObjectRef.Entity).Get()))
+			if (const AActor* TargetActor = Cast<AActor>(AllTheThings->PackageMap->GetObjectFromEntityId(TargetObjectRef.Entity).Get()))
 			{
 				if (const UNetConnection* OwningConnection = TargetActor->GetNetConnection())
 				{
 					if (const AActor* ConnectionOwner = OwningConnection->OwningActor)
 					{
-						if (!ActorGroupManager->IsSameWorkerType(TargetActor, ConnectionOwner))
+						if (!AllTheThings->ActorGroupManager->IsSameWorkerType(TargetActor, ConnectionOwner))
 						{
 							UE_LOG(LogSpatialSender, Verbose, TEXT("RPC %s Cannot be packed as TargetActor (%s) and Connection Owner (%s) are on different worker types."),
 								*Function->GetName(),
@@ -806,7 +799,7 @@ ERPCResult USpatialSender::SendRPCInternal(UObject* TargetObject, UFunction* Fun
 
 			Worker_ComponentUpdate ComponentUpdate = CreateRPCEventUpdate(TargetObject, Payload, ComponentId, RPCInfo.Index);
 
-			Connection->SendComponentUpdate(EntityId, &ComponentUpdate);
+			AllTheThings->Connection->SendComponentUpdate(EntityId, &ComponentUpdate);
 #if !UE_BUILD_SHIPPING
 			NetDriver->AllTheThings->SpatialMetrics->TrackSentRPC(Function, RPCInfo.Type, Payload.PayloadData.Num());
 #endif // !UE_BUILD_SHIPPING
@@ -844,7 +837,7 @@ void USpatialSender::RetryReliableRPC(TSharedRef<FReliableRPCForRetry> RetryRPC)
 	}
 
 	UObject* TargetObject = RetryRPC->TargetObject.Get();
-	FUnrealObjectRef TargetObjectRef = PackageMap->GetUnrealObjectRefFromObject(TargetObject);
+	FUnrealObjectRef TargetObjectRef = AllTheThings->PackageMap->GetUnrealObjectRefFromObject(TargetObject);
 	if (TargetObjectRef == FUnrealObjectRef::UNRESOLVED_OBJECT_REF)
 	{
 		UE_LOG(LogSpatialSender, Warning, TEXT("Actor %s got unresolved (?) before RPC %s could be retried. This RPC will not be sent."), *TargetObject->GetName(), *RetryRPC->Function->GetName());
@@ -852,13 +845,13 @@ void USpatialSender::RetryReliableRPC(TSharedRef<FReliableRPCForRetry> RetryRPC)
 	}
 
 	Worker_CommandRequest CommandRequest = CreateRetryRPCCommandRequest(*RetryRPC, TargetObjectRef.Offset);
-	Worker_RequestId RequestId = Connection->SendCommandRequest(TargetObjectRef.Entity, &CommandRequest, SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID);
+	Worker_RequestId RequestId = AllTheThings->Connection->SendCommandRequest(TargetObjectRef.Entity, &CommandRequest, SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID);
 
 	// The number of attempts is used to determine the delay in case the command times out and we need to resend it.
 	RetryRPC->Attempts++;
 	UE_LOG(LogSpatialSender, Verbose, TEXT("Sending reliable command request (entity: %lld, component: %d, function: %s, attempt: %d)"),
 		TargetObjectRef.Entity, RetryRPC->ComponentId, *RetryRPC->Function->GetName(), RetryRPC->Attempts);
-	Receiver->AddPendingReliableRPC(RequestId, RetryRPC);
+	AllTheThings->Receiver->AddPendingReliableRPC(RequestId, RetryRPC);
 }
 
 void USpatialSender::RegisterChannelForPositionUpdate(USpatialActorChannel* Channel)
@@ -884,12 +877,12 @@ void USpatialSender::SendCreateEntityRequest(USpatialActorChannel* Channel)
 	UE_LOG(LogSpatialSender, Log, TEXT("Sending create entity request for %s with EntityId %lld"), *Channel->Actor->GetName(), Channel->GetEntityId());
 
 	Worker_RequestId RequestId = CreateEntity(Channel);
-	Receiver->AddPendingActorRequest(RequestId, Channel);
+	AllTheThings->Receiver->AddPendingActorRequest(RequestId, Channel);
 }
 
 void USpatialSender::SendDeleteEntityRequest(Worker_EntityId EntityId)
 {
-	Connection->SendDeleteEntityRequest(EntityId);
+	AllTheThings->Connection->SendDeleteEntityRequest(EntityId);
 }
 
 void USpatialSender::SendRequestToClearRPCsOnEntityCreation(Worker_EntityId EntityId)
@@ -923,7 +916,7 @@ void USpatialSender::SendServerEndpointReadyUpdate(Worker_EntityId EntityId)
 
 void USpatialSender::ProcessOrQueueOutgoingRPC(const FUnrealObjectRef& InTargetObjectRef, SpatialGDK::RPCPayload&& InPayload)
 {
-	TWeakObjectPtr<UObject> TargetObjectWeakPtr = PackageMap->GetObjectFromUnrealObjectRef(InTargetObjectRef);
+	TWeakObjectPtr<UObject> TargetObjectWeakPtr = AllTheThings->PackageMap->GetObjectFromUnrealObjectRef(InTargetObjectRef);
 	if (!TargetObjectWeakPtr.IsValid())
 	{
 		// Target object was destroyed before the RPC could be (re)sent
@@ -931,9 +924,9 @@ void USpatialSender::ProcessOrQueueOutgoingRPC(const FUnrealObjectRef& InTargetO
 	}
 
 	UObject* TargetObject = TargetObjectWeakPtr.Get();
-	const FClassInfo& ClassInfo = ClassInfoManager->GetOrCreateClassInfoByObject(TargetObject);
+	const FClassInfo& ClassInfo = AllTheThings->ClassInfoManager->GetOrCreateClassInfoByObject(TargetObject);
 	UFunction* Function = ClassInfo.RPCs[InPayload.Index];
-	const FRPCInfo& RPCInfo = ClassInfoManager->GetRPCInfo(TargetObject, Function);
+	const FRPCInfo& RPCInfo = AllTheThings->ClassInfoManager->GetRPCInfo(TargetObject, Function);
 
 	OutgoingRPCs.ProcessOrQueueRPC(InTargetObjectRef, RPCInfo.Type, MoveTemp(InPayload));
 
@@ -943,7 +936,7 @@ void USpatialSender::ProcessOrQueueOutgoingRPC(const FUnrealObjectRef& InTargetO
 
 FSpatialNetBitWriter USpatialSender::PackRPCDataToSpatialNetBitWriter(UFunction* Function, void* Parameters, int ReliableRPCId) const
 {
-	FSpatialNetBitWriter PayloadWriter(PackageMap);
+	FSpatialNetBitWriter PayloadWriter(AllTheThings->PackageMap);
 
 	if (GetDefault<USpatialGDKSettings>()->bCheckRPCOrder)
 	{
@@ -966,7 +959,7 @@ Worker_CommandRequest USpatialSender::CreateRPCCommandRequest(UObject* TargetObj
 	CommandRequest.schema_type = Schema_CreateCommandRequest(ComponentId, SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID);
 	Schema_Object* RequestObject = Schema_GetCommandRequestObject(CommandRequest.schema_type);
 
-	FUnrealObjectRef TargetObjectRef(PackageMap->GetUnrealObjectRefFromNetGUID(PackageMap->GetNetGUIDFromObject(TargetObject)));
+	FUnrealObjectRef TargetObjectRef(AllTheThings->PackageMap->GetUnrealObjectRefFromNetGUID(AllTheThings->PackageMap->GetNetGUIDFromObject(TargetObject)));
 	ensure(TargetObjectRef != FUnrealObjectRef::UNRESOLVED_OBJECT_REF);
 
 	OutEntityId = TargetObjectRef.Entity;
@@ -997,7 +990,7 @@ Worker_ComponentUpdate USpatialSender::CreateRPCEventUpdate(UObject* TargetObjec
 	Schema_Object* EventsObject = Schema_GetComponentUpdateEvents(ComponentUpdate.schema_type);
 	Schema_Object* EventData = Schema_AddObject(EventsObject, SpatialConstants::UNREAL_RPC_ENDPOINT_EVENT_ID);
 
-	FUnrealObjectRef TargetObjectRef(PackageMap->GetUnrealObjectRefFromNetGUID(PackageMap->GetNetGUIDFromObject(TargetObject)));
+	FUnrealObjectRef TargetObjectRef(AllTheThings->PackageMap->GetUnrealObjectRefFromNetGUID(AllTheThings->PackageMap->GetNetGUIDFromObject(TargetObject)));
 	ensure(TargetObjectRef != FUnrealObjectRef::UNRESOLVED_OBJECT_REF);
 
 	RPCPayload::WriteToSchemaObject(EventData, Payload.Offset, Payload.Index, Payload.PayloadData.GetData(), Payload.PayloadData.Num());
@@ -1006,10 +999,10 @@ Worker_ComponentUpdate USpatialSender::CreateRPCEventUpdate(UObject* TargetObjec
 }
 ERPCResult USpatialSender::AddPendingRPC(UObject* TargetObject, UFunction* Function, const RPCPayload& Payload, Worker_ComponentId ComponentId, Schema_FieldId RPCIndex)
 {
-	FUnrealObjectRef TargetObjectRef(PackageMap->GetUnrealObjectRefFromNetGUID(PackageMap->GetNetGUIDFromObject(TargetObject)));
+	FUnrealObjectRef TargetObjectRef(AllTheThings->PackageMap->GetUnrealObjectRefFromNetGUID(AllTheThings->PackageMap->GetNetGUIDFromObject(TargetObject)));
 	ensure(TargetObjectRef != FUnrealObjectRef::UNRESOLVED_OBJECT_REF);
 
-	AActor* TargetActor = Cast<AActor>(PackageMap->GetObjectFromEntityId(TargetObjectRef.Entity).Get());
+	AActor* TargetActor = Cast<AActor>(AllTheThings->PackageMap->GetObjectFromEntityId(TargetObjectRef.Entity).Get());
 	check(TargetActor != nullptr);
 	UNetConnection* OwningConnection = TargetActor->GetNetConnection();
 	if (OwningConnection == nullptr)
@@ -1038,7 +1031,7 @@ ERPCResult USpatialSender::AddPendingRPC(UObject* TargetObject, UFunction* Funct
 		return ERPCResult::ControllerChannelNotListening;
 	}
 
-	FUnrealObjectRef ControllerObjectRef = PackageMap->GetUnrealObjectRefFromObject(Controller);
+	FUnrealObjectRef ControllerObjectRef = AllTheThings->PackageMap->GetUnrealObjectRefFromObject(Controller);
 	ensure(ControllerObjectRef != FUnrealObjectRef::UNRESOLVED_OBJECT_REF);
 
 	TSet<TWeakObjectPtr<const UObject>> UnresolvedObjects;
@@ -1055,7 +1048,7 @@ ERPCResult USpatialSender::AddPendingRPC(UObject* TargetObject, UFunction* Funct
 
 void USpatialSender::SendCommandResponse(Worker_RequestId request_id, Worker_CommandResponse& Response)
 {
-	Connection->SendCommandResponse(request_id, &Response);
+	AllTheThings->Connection->SendCommandResponse(request_id, &Response);
 }
 
 void USpatialSender::SendEmptyCommandResponse(Worker_ComponentId ComponentId, Schema_FieldId CommandIndex, Worker_RequestId RequestId)
@@ -1064,14 +1057,14 @@ void USpatialSender::SendEmptyCommandResponse(Worker_ComponentId ComponentId, Sc
 	Response.component_id = ComponentId;
 	Response.schema_type = Schema_CreateCommandResponse(ComponentId, CommandIndex);
 
-	Connection->SendCommandResponse(RequestId, &Response);
+	AllTheThings->Connection->SendCommandResponse(RequestId, &Response);
 }
 
 // Authority over the ClientRPC Schema component is dictated by the owning connection of a client.
 // This function updates the authority of that component as the owning connection can change.
 bool USpatialSender::UpdateEntityACLs(Worker_EntityId EntityId, const FString& OwnerWorkerAttribute)
 {
-	EntityAcl* EntityACL = StaticComponentView->GetComponentData<EntityAcl>(EntityId);
+	EntityAcl* EntityACL = AllTheThings->StaticComponentView->GetComponentData<EntityAcl>(EntityId);
 
 	if (EntityACL == nullptr)
 	{
@@ -1090,15 +1083,15 @@ bool USpatialSender::UpdateEntityACLs(Worker_EntityId EntityId, const FString& O
 	EntityACL->ComponentWriteAcl.Add(SpatialConstants::CLIENT_RPC_ENDPOINT_COMPONENT_ID, OwningClientOnly);
 	Worker_ComponentUpdate Update = EntityACL->CreateEntityAclUpdate();
 
-	Connection->SendComponentUpdate(EntityId, &Update);
+	AllTheThings->Connection->SendComponentUpdate(EntityId, &Update);
 	return true;
 }
 
 void USpatialSender::UpdateInterestComponent(AActor* Actor)
 {
-	InterestFactory InterestUpdateFactory(Actor, ClassInfoManager->GetOrCreateClassInfoByObject(Actor), NetDriver);
+	InterestFactory InterestUpdateFactory(Actor, AllTheThings->ClassInfoManager->GetOrCreateClassInfoByObject(Actor), NetDriver);
 	Worker_ComponentUpdate Update = InterestUpdateFactory.CreateInterestUpdate();
 
-	Worker_EntityId EntityId = PackageMap->GetEntityIdFromObject(Actor);
-	Connection->SendComponentUpdate(EntityId, &Update);
+	Worker_EntityId EntityId = AllTheThings->PackageMap->GetEntityIdFromObject(Actor);
+	AllTheThings->Connection->SendComponentUpdate(EntityId, &Update);
 }

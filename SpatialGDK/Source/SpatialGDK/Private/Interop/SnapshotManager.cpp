@@ -14,11 +14,9 @@ DEFINE_LOG_CATEGORY(LogSnapshotManager);
 
 using namespace SpatialGDK;
 
-void USnapshotManager::Init(USpatialNetDriver* InNetDriver)
+void USnapshotManager::Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings)
 {
 	NetDriver = InNetDriver;
-	Receiver = InNetDriver->AllTheThings->Receiver;
-	GlobalStateManager = InNetDriver->AllTheThings->GlobalStateManager;
 }
 
 // WorldWipe will send out an expensive entity query for every entity in the deployment.
@@ -31,7 +29,7 @@ void USnapshotManager::WorldWipe(const USpatialNetDriver::PostWorldWipeDelegate&
 
 	Worker_Constraint GSMConstraint;
 	GSMConstraint.constraint_type = WORKER_CONSTRAINT_TYPE_ENTITY_ID;
-	GSMConstraint.entity_id_constraint.entity_id = GlobalStateManager->GlobalStateManagerEntityId;
+	GSMConstraint.entity_id_constraint.entity_id = AllTheThings->GlobalStateManager->GlobalStateManagerEntityId;
 
 	Worker_NotConstraint NotGSMConstraint;
 	NotGSMConstraint.constraint = &GSMConstraint;
@@ -64,14 +62,14 @@ void USnapshotManager::WorldWipe(const USpatialNetDriver::PostWorldWipeDelegate&
 			DeleteEntities(Op);
 
 			// Also make sure that we kill the GSM.
-			NetDriver->AllTheThings->Connection->SendDeleteEntityRequest(GlobalStateManager->GlobalStateManagerEntityId);
+			AllTheThings->Connection->SendDeleteEntityRequest(AllTheThings->GlobalStateManager->GlobalStateManagerEntityId);
 
 			// The world is now ready to finish ServerTravel which means loading in a new map.
 			PostWorldWipeDelegate.ExecuteIfBound();
 		}
 	});
 
-	Receiver->AddEntityQueryDelegate(RequestID, WorldQueryDelegate);
+	AllTheThings->Receiver->AddEntityQueryDelegate(RequestID, WorldQueryDelegate);
 }
 
 void USnapshotManager::DeleteEntities(const Worker_EntityQueryResponseOp& Op)
@@ -182,7 +180,7 @@ void USnapshotManager::LoadSnapshot(const FString& SnapshotName)
 				if (ComponentData.component_id == SpatialConstants::SINGLETON_MANAGER_COMPONENT_ID)
 				{
 					// Save the new GSM Entity ID.
-					GlobalStateManager->GlobalStateManagerEntityId = ReservedEntityID;
+					AllTheThings->GlobalStateManager->GlobalStateManagerEntityId = ReservedEntityID;
 				}
 			}
 
@@ -190,7 +188,7 @@ void USnapshotManager::LoadSnapshot(const FString& SnapshotName)
 			NetDriver->AllTheThings->Connection->SendCreateEntityRequest(MoveTemp(EntityToSpawn), &ReservedEntityID);
 		}
 
-		GlobalStateManager->SetAcceptingPlayers(true);
+		AllTheThings->GlobalStateManager->SetAcceptingPlayers(true);
 	});
 
 	// Reserve the Entity IDs
@@ -200,5 +198,5 @@ void USnapshotManager::LoadSnapshot(const FString& SnapshotName)
 	// References to entities that are stored within the snapshot need remapping once we know the new entity IDs.
 
 	// Add the spawn delegate
-	Receiver->AddReserveEntityIdsDelegate(ReserveRequestID, SpawnEntitiesDelegate);
+	AllTheThings->Receiver->AddReserveEntityIdsDelegate(ReserveRequestID, SpawnEntitiesDelegate);
 }

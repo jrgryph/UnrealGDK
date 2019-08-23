@@ -30,13 +30,11 @@ DEFINE_LOG_CATEGORY(LogGlobalStateManager);
 
 using namespace SpatialGDK;
 
-void UGlobalStateManager::Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager)
+void UGlobalStateManager::Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings)
 {
 	NetDriver = InNetDriver;
-	StaticComponentView = InNetDriver->AllTheThings->StaticComponentView;
-	Sender = InNetDriver->AllTheThings->Sender;
-	Receiver = InNetDriver->AllTheThings->Receiver;
-	TimerManager = InTimerManager;
+	AllTheThings = InAllTheThings;
+
 	GlobalStateManagerEntityId = SpatialConstants::INITIAL_GLOBAL_STATE_MANAGER_ENTITY_ID;
 
 #if WITH_EDITOR
@@ -264,7 +262,7 @@ void UGlobalStateManager::LinkExistingSingletonActor(const UClass* SingletonActo
 	Channel = Cast<USpatialActorChannel>(Connection->CreateChannelByName(NAME_Actor, EChannelCreateFlags::OpenedLocally));
 #endif
 
-	if (StaticComponentView->GetAuthority(SingletonEntityId, SpatialConstants::POSITION_COMPONENT_ID) == WORKER_AUTHORITY_AUTHORITATIVE)
+	if (AllTheThings->StaticComponentView->GetAuthority(SingletonEntityId, SpatialConstants::POSITION_COMPONENT_ID) == WORKER_AUTHORITY_AUTHORITATIVE)
 	{
 		SingletonActor->Role = ROLE_Authority;
 		SingletonActor->RemoteRole = ROLE_SimulatedProxy;
@@ -339,7 +337,7 @@ USpatialActorChannel* UGlobalStateManager::AddSingleton(AActor* SingletonActor)
 		{
 			check(NetDriver->AllTheThings->PackageMap->GetObjectFromEntityId(*SingletonEntityId) == nullptr);
 			NetDriver->AllTheThings->PackageMap->ResolveEntityActor(SingletonActor, *SingletonEntityId);
-			if (StaticComponentView->GetAuthority(*SingletonEntityId, SpatialConstants::POSITION_COMPONENT_ID) != WORKER_AUTHORITY_AUTHORITATIVE)
+			if (AllTheThings->StaticComponentView->GetAuthority(*SingletonEntityId, SpatialConstants::POSITION_COMPONENT_ID) != WORKER_AUTHORITY_AUTHORITATIVE)
 			{
 				SingletonActor->Role = ROLE_SimulatedProxy;
 				SingletonActor->RemoteRole = ROLE_Authority;
@@ -610,7 +608,7 @@ void UGlobalStateManager::QueryGSM(bool bRetryUntilAcceptingPlayers)
 		}
 	});
 
-	Receiver->AddEntityQueryDelegate(RequestID, GSMQueryDelegate);
+	AllTheThings->Receiver->AddEntityQueryDelegate(RequestID, GSMQueryDelegate);
 }
 
 void UGlobalStateManager::ApplyDeploymentMapDataFromQueryResponse(const Worker_EntityQueryResponseOp& Op)
@@ -665,7 +663,7 @@ void UGlobalStateManager::RetryQueryGSM(bool bRetryUntilAcceptingPlayers)
 
 	UE_LOG(LogGlobalStateManager, Log, TEXT("Retrying query for GSM in %f seconds"), RetryTimerDelay);
 	FTimerHandle RetryTimer;
-	TimerManager->SetTimer(RetryTimer, [WeakThis = TWeakObjectPtr<UGlobalStateManager>(this), bRetryUntilAcceptingPlayers]()
+	AllTheThings->TimerManager.SetTimer(RetryTimer, [WeakThis = TWeakObjectPtr<UGlobalStateManager>(this), bRetryUntilAcceptingPlayers]()
 	{
 		if (UGlobalStateManager* GSM = WeakThis.Get())
 		{

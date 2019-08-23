@@ -23,6 +23,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogSpatialSender, Log, All);
 class USpatialActorChannel;
 class USpatialDispatcher;
 class USpatialNetDriver;
+class USpatialBigBlob;
 class USpatialPackageMapClient;
 class USpatialReceiver;
 class USpatialStaticComponentView;
@@ -68,7 +69,7 @@ class SPATIALGDK_API USpatialSender : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager);
+	void Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings);
 
 	// Actor Updates
 	void SendComponentUpdates(UObject* Object, const FClassInfo& Info, USpatialActorChannel* Channel, const FRepChangeState* RepChanges, const FHandoverChangeState* HandoverChanges);
@@ -132,24 +133,7 @@ private:
 	USpatialNetDriver* NetDriver;
 
 	UPROPERTY()
-	USpatialStaticComponentView* StaticComponentView;
-
-	UPROPERTY()
-	USpatialWorkerConnection* Connection;
-
-	UPROPERTY()
-	USpatialReceiver* Receiver;
-
-	UPROPERTY()
-	USpatialPackageMapClient* PackageMap;
-
-	UPROPERTY()
-	USpatialClassInfoManager* ClassInfoManager;
-
-	UPROPERTY()
-	UActorGroupManager* ActorGroupManager;
-
-	FTimerManager* TimerManager;
+	USpatialBigBlob* AllTheThings;
 
 	FRPCContainer OutgoingRPCs;
 	FRPCsOnEntityCreationMap OutgoingOnCreateEntityRPCs;

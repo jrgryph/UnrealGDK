@@ -13,6 +13,7 @@
 
 #include "SnapshotManager.generated.h"
 
+class USpatialBigBlob;
 class UGlobalStateManager;
 class USpatialReceiver;
 
@@ -24,7 +25,7 @@ class SPATIALGDK_API USnapshotManager : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(USpatialNetDriver* InNetDriver);
+	void Init(USpatialNetDriver* InNetDriver, USpatialBigBlob* InAllTheThings);
 
 	void WorldWipe(const USpatialNetDriver::PostWorldWipeDelegate& Delegate);
 	void DeleteEntities(const Worker_EntityQueryResponseOp& Op);
@@ -35,8 +36,5 @@ private:
 	USpatialNetDriver* NetDriver;
 
 	UPROPERTY()
-	UGlobalStateManager* GlobalStateManager;
-
-	UPROPERTY()
-	USpatialReceiver* Receiver;
+	USpatialBigBlob* AllTheThings;
 };

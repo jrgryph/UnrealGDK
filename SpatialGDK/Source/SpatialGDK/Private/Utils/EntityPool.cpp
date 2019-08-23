@@ -13,11 +13,9 @@ DEFINE_LOG_CATEGORY(LogSpatialEntityPool);
 
 using namespace SpatialGDK;
 
-void UEntityPool::Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager)
+void UEntityPool::Init(USpatialNetDriver* InNetDriver)
 {
 	NetDriver = InNetDriver;
-	Receiver = InNetDriver->AllTheThings->Receiver;
-	TimerManager = InTimerManager;
 
 	ReserveEntityIDs(GetDefault<USpatialGDKSettings>()->EntityPoolInitialReservationCount);
 }
@@ -68,7 +66,7 @@ void UEntityPool::ReserveEntityIDs(int32 EntitiesToReserve)
 
 		FTimerHandle ExpirationTimer;
 		TWeakObjectPtr<UEntityPool> WeakThis(this);
-		TimerManager->SetTimer(ExpirationTimer, [WeakThis, ExpiringEntityRangeId = NewEntityRange.EntityRangeId]()
+		NetDriver->AllTheThings->TimerManager.SetTimer(ExpirationTimer, [WeakThis, ExpiringEntityRangeId = NewEntityRange.EntityRangeId]()
 		{
 			if (UEntityPool* Pool = WeakThis.Get())
 			{
@@ -88,7 +86,7 @@ void UEntityPool::ReserveEntityIDs(int32 EntitiesToReserve)
 	bIsAwaitingResponse = true;
 
 	// Add the spawn delegate
-	Receiver->AddReserveEntityIdsDelegate(ReserveRequestID, CacheEntityIDsDelegate);
+	NetDriver->AllTheThings->Receiver->AddReserveEntityIdsDelegate(ReserveRequestID, CacheEntityIDsDelegate);
 }
 
 void UEntityPool::OnEntityRangeExpired(uint32 ExpiringEntityRangeId)

@@ -22,7 +22,7 @@ class SPATIALGDK_API USpatialPlayerSpawner : public UObject
 
 public:
 
-	void Init(USpatialNetDriver* NetDriver, FTimerManager* TimerManager);
+	void Init(USpatialNetDriver* NetDriver);
 
 	// Server
 	void ReceivePlayerSpawnRequest(Schema_Object* Payload, const char* CallerAttribute, Worker_RequestId RequestId);
@@ -37,7 +37,6 @@ private:
 	UPROPERTY()
 	USpatialNetDriver* NetDriver;
 
-	FTimerManager* TimerManager;
 	int NumberOfAttempts;
 
 	TSet<FString> WorkersWithPlayersSpawned;

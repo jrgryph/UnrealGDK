@@ -21,10 +21,9 @@ DEFINE_LOG_CATEGORY(LogSpatialPlayerSpawner);
 
 using namespace SpatialGDK;
 
-void USpatialPlayerSpawner::Init(USpatialNetDriver* InNetDriver, FTimerManager* InTimerManager)
+void USpatialPlayerSpawner::Init(USpatialNetDriver* InNetDriver)
 {
 	NetDriver = InNetDriver;
-	TimerManager = InTimerManager;
 
 	NumberOfAttempts = 0;
 }
@@ -140,7 +139,7 @@ void USpatialPlayerSpawner::ReceivePlayerSpawnResponse(const Worker_CommandRespo
 			UTF8_TO_TCHAR(Op.message));
 
 		FTimerHandle RetryTimer;
-		TimerManager->SetTimer(RetryTimer, [WeakThis = TWeakObjectPtr<USpatialPlayerSpawner>(this)]()
+		NetDriver->AllTheThings->TimerManager.SetTimer(RetryTimer, [WeakThis = TWeakObjectPtr<USpatialPlayerSpawner>(this)]()
 		{
 			if (USpatialPlayerSpawner* Spawner = WeakThis.Get())
 			{
