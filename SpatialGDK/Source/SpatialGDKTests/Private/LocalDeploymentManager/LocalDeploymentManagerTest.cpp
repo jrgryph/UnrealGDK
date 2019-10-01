@@ -2,10 +2,15 @@
 
 #include "TestDefinitions.h"
 
+#include "TestActor.h"
+
 #include "LocalDeploymentManager.h"
 #include "SpatialGDKDefaultLaunchConfigGenerator.h"
 #include "SpatialGDKDefaultWorkerJsonGenerator.h"
 #include "SpatialGDKEditorSettings.h"
+
+#include "EngineClasses/SpatialNetDriver.h"
+#include "Interop/Connection/SpatialWorkerConnection.h"
 
 #include "CoreMinimal.h"
 
@@ -117,6 +122,19 @@ DEFINE_LATENT_COMMAND(StopDeployment)
 	return true;
 }
 
+DEFINE_LATENT_COMMAND_ONE_PARAMETER(WaitForDeploymentFor, double, WaitTime)
+{
+	const double NewTime = FPlatformTime::Seconds();
+	if (NewTime - StartTime >= WaitTime)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 DEFINE_LATENT_COMMAND_TWO_PARAMETERS(WaitForDeployment, FAutomationTestBase*, Test, EDeploymentState, ExpectedDeploymentState)
 {
 	const double NewTime = FPlatformTime::Seconds();
@@ -185,5 +203,60 @@ LOCALDEPLOYMENT_TEST(GIVEN_deployment_running_WHEN_deployment_stopped_THEN_deplo
 
 	// THEN
 	ADD_LATENT_AUTOMATION_COMMAND(CheckDeploymentState(this, EDeploymentState::IsNotRunning));
+    return true;
+}
+
+static USpatialNetDriver* Driver = nullptr;
+static USpatialWorkerConnection* SpatialConnection = nullptr;
+
+DEFINE_LATENT_COMMAND(CreateDriverAndConnection)
+{
+	//USpatialNetDriver* Driver = NewObject<USpatialNetDriver>();
+	Driver = NewObject<USpatialNetDriver>();
+	FString Error;
+	FURL URL;
+	URL.Protocol = TEXT("unreal");
+	URL.Port = 7777;
+	URL.Valid = 1;
+	URL.Map = TEXT("/Game/Maps/UEDPIE_1_FPS-Start_Tiny");
+
+	//USpatialWorkerConnection* SpatialConnection = NewObject<USpatialWorkerConnection>();
+	SpatialConnection = NewObject<USpatialWorkerConnection>();
+	SpatialConnection->Init(nullptr);
+
+	Driver->WorkerConnection = SpatialConnection;
+	SpatialConnection->SetSpatialNetDriver(Driver);
+
+	Driver->InitBase(false, nullptr, URL, false, Error);
+	SpatialConnection->Connect(false);
+
+	return true;
+}
+
+DEFINE_LATENT_COMMAND(WaitHere)
+{
+	//SpatialConnection->SendMetrics();
+	SpatialConnection;
+	Driver;
+	ATestActor* TestActor = NewObject<ATestActor>();
+	TestActor->DoSomethingOnClient();
+	TestActor->DoSomethingOnServer();
+	//void* Parameters = nullptr;
+	//struct FOutParmRec* = nullptr;
+	//Driver->ProcessRemoteFunction(TestActor, ATestActor::DoSomethingOnClient, Parameters, OutParms);
+
+	//virtual void ProcessRemoteFunction(class AActor* Actor, class UFunction* Function, void* Parameters, struct FOutParmRec* OutParms, struct FFrame* NotStack, class UObject* SubObject = NULL ) override;
+//void USpatialNetDriver::ProcessRPC(AActor* Actor, UObject* SubObject, UFunction* Function, void* Parameters)
+	return true;
+}
+
+LOCALDEPLOYMENT_TEST(Sometest)
+{
+	ADD_LATENT_AUTOMATION_COMMAND(StartDeployment());
+	ADD_LATENT_AUTOMATION_COMMAND(WaitForDeployment(this, EDeploymentState::IsRunning));
+	ADD_LATENT_AUTOMATION_COMMAND(WaitForDeploymentFor(10.0));
+	ADD_LATENT_AUTOMATION_COMMAND(CreateDriverAndConnection());
+	ADD_LATENT_AUTOMATION_COMMAND(WaitForDeploymentFor(10.0));
+	ADD_LATENT_AUTOMATION_COMMAND(WaitHere());
     return true;
 }

@@ -19,6 +19,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogSpatialWorkerConnection, Log, All);
 
 class USpatialGameInstance;
 class UWorld;
+class USpatialNetDriver;
 
 enum class SpatialConnectionType
 {
@@ -61,6 +62,8 @@ public:
 	FString GetWorkerId() const;
 	const TArray<FString>& GetWorkerAttributes() const;
 
+	void SetSpatialNetDriver(USpatialNetDriver* InNetDriver);
+
 	FReceptionistConfig ReceptionistConfig;
 	FLocatorConfig LocatorConfig;
 
@@ -77,7 +80,7 @@ private:
 
 	void CacheWorkerAttributes();
 
-	class USpatialNetDriver* GetSpatialNetDriverChecked() const;
+	USpatialNetDriver* GetSpatialNetDriverChecked();
 
 	// Begin FRunnable Interface
 	virtual bool Init() override;
@@ -115,4 +118,5 @@ private:
 
 	// RequestIds per worker connection start at 0 and incrementally go up each command sent.
 	Worker_RequestId NextRequestId = 0;
+	USpatialNetDriver* NetDriver = nullptr;
 };

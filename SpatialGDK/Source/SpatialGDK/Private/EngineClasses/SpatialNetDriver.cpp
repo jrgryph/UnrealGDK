@@ -170,36 +170,43 @@ bool USpatialNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotify, c
 
 void USpatialNetDriver::InitiateConnectionToSpatialOS(const FURL& URL)
 {
-	USpatialGameInstance* GameInstance = nullptr;
-
-	// A client does not have a world at this point, so we use the WorldContext
-	// to get a reference to the GameInstance
-	if (bConnectAsClient)
+	if (WorkerConnection == nullptr)
 	{
-		const FWorldContext& WorldContext = GEngine->GetWorldContextFromPendingNetGameNetDriverChecked(this);
-		GameInstance = Cast<USpatialGameInstance>(WorldContext.OwningGameInstance);
+		USpatialGameInstance* GameInstance = nullptr;
+
+		// A client does not have a world at this point, so we use the WorldContext
+		// to get a reference to the GameInstance
+		if (bConnectAsClient)
+		{
+			const FWorldContext& WorldContext = GEngine->GetWorldContextFromPendingNetGameNetDriverChecked(this);
+			GameInstance = Cast<USpatialGameInstance>(WorldContext.OwningGameInstance);
+		}
+		else
+		{
+			GameInstance = Cast<USpatialGameInstance>(GetWorld()->GetGameInstance());
+		}
+
+		if (GameInstance == nullptr)
+		{
+			UE_LOG(LogSpatialOSNetDriver, Error, TEXT("A SpatialGameInstance is required. Make sure your game's GameInstance inherits from SpatialGameInstance"));
+			return;
+		}
+
+		if (!bPersistSpatialConnection)
+		{
+			// Destroy the old connection
+			GameInstance->DestroySpatialWorkerConnection();
+
+			// Create a new SpatialWorkerConnection in the SpatialGameInstance.
+			GameInstance->CreateNewSpatialWorkerConnection();
+		}
+
+		Connection = GameInstance->GetSpatialWorkerConnection();
 	}
 	else
 	{
-		GameInstance = Cast<USpatialGameInstance>(GetWorld()->GetGameInstance());
+		Connection = WorkerConnection;
 	}
-
-	if (GameInstance == nullptr)
-	{
-		UE_LOG(LogSpatialOSNetDriver, Error, TEXT("A SpatialGameInstance is required. Make sure your game's GameInstance inherits from SpatialGameInstance"));
-		return;
-	}
-
-	if (!bPersistSpatialConnection)
-	{
-		// Destroy the old connection
-		GameInstance->DestroySpatialWorkerConnection();
-
-		// Create a new SpatialWorkerConnection in the SpatialGameInstance.
-		GameInstance->CreateNewSpatialWorkerConnection();
-	}
-
-	Connection = GameInstance->GetSpatialWorkerConnection();
 
 	if (URL.HasOption(TEXT("locator")))
 	{
@@ -207,11 +214,13 @@ void USpatialNetDriver::InitiateConnectionToSpatialOS(const FURL& URL)
 		Connection->LocatorConfig.PlayerIdentityToken = URL.GetOption(TEXT("playeridentity="), TEXT(""));
 		Connection->LocatorConfig.LoginToken = URL.GetOption(TEXT("login="), TEXT(""));
 		Connection->LocatorConfig.UseExternalIp = true;
-		Connection->LocatorConfig.WorkerType = GameInstance->GetSpatialWorkerType().ToString();
+		//Connection->LocatorConfig.WorkerType = GameInstance->GetSpatialWorkerType().ToString();
+		Connection->LocatorConfig.WorkerType = "UnrealWorker";
 	}
 	else // Using Receptionist
 	{
-		Connection->ReceptionistConfig.WorkerType = GameInstance->GetSpatialWorkerType().ToString();
+		//Connection->ReceptionistConfig.WorkerType = GameInstance->GetSpatialWorkerType().ToString();
+		Connection->ReceptionistConfig.WorkerType = "UnrealWorker";
 
 		// Check for overrides in the travel URL.
 		if (!URL.Host.IsEmpty() && URL.Host.Compare(SpatialConstants::LOCAL_HOST) != 0)
@@ -280,7 +289,7 @@ void USpatialNetDriver::InitializeSpatialOutputDevice()
 
 void USpatialNetDriver::CreateAndInitializeCoreClasses()
 {
-	InitializeSpatialOutputDevice();
+	//InitializeSpatialOutputDevice();
 
 	Dispatcher = NewObject<USpatialDispatcher>();
 	Sender = NewObject<USpatialSender>();
@@ -331,14 +340,20 @@ void USpatialNetDriver::CreateServerSpatialOSNetConnection()
 	FURL DummyURL;
 
 	NetConnection->InitRemoteConnection(this, nullptr, DummyURL, *FromAddr, USOCK_Open);
-	Notify->NotifyAcceptedConnection(NetConnection);
+	if (Notify != nullptr)
+	{
+		Notify->NotifyAcceptedConnection(NetConnection);
+	}
 	NetConnection->bReliableSpatialConnection = true;
 	AddClientConnection(NetConnection);
 	//Since this is not a "real" client connection, we immediately pretend that it is fully logged on.
 	NetConnection->SetClientLoginState(EClientLoginState::Welcomed);
 
 	// Bind the ProcessServerTravel delegate to the spatial variant. This ensures that if ServerTravel is called and Spatial networking is enabled, we can travel properly.
-	GetWorld()->SpatialProcessServerTravelDelegate.BindStatic(SpatialProcessServerTravel);
+	if (GetWorld())
+	{
+		GetWorld()->SpatialProcessServerTravelDelegate.BindStatic(SpatialProcessServerTravel);
+	}
 }
 
 void USpatialNetDriver::QueryGSMToLoadMap()

@@ -22,6 +22,7 @@ DEFINE_LOG_CATEGORY(LogSpatialWorkerConnection);
 
 using namespace SpatialGDK;
 
+#pragma optimize("", off)
 void USpatialWorkerConnection::Init(USpatialGameInstance* InGameInstance)
 {
 	GameInstance = InGameInstance;
@@ -294,7 +295,8 @@ void USpatialWorkerConnection::FinishConnecting(Worker_ConnectionFuture* Connect
 
 			SpatialWorkerConnection->WorkerConnection = NewCAPIWorkerConnection;
 
-			if (Worker_Connection_IsConnected(NewCAPIWorkerConnection))
+			uint8_t conectionResult = Worker_Connection_GetConnectionStatusCode(NewCAPIWorkerConnection);
+			if (conectionResult == WORKER_CONNECTION_STATUS_CODE_SUCCESS)
 			{
 				SpatialWorkerConnection->CacheWorkerAttributes();
 				SpatialWorkerConnection->OnConnectionSuccess();
@@ -430,20 +432,30 @@ void USpatialWorkerConnection::CacheWorkerAttributes()
 	}
 }
 
-USpatialNetDriver* USpatialWorkerConnection::GetSpatialNetDriverChecked() const
+USpatialNetDriver* USpatialWorkerConnection::GetSpatialNetDriverChecked()
 {
-	UNetDriver* NetDriver = GameInstance->GetWorld()->GetNetDriver();
+	if (NetDriver != nullptr)
+{
+		return NetDriver;
+	}
+
+	UNetDriver* LocalNetDriver = GameInstance->GetWorld()->GetNetDriver();
 
 	// On the client, the world might not be completely set up.
 	// in this case we can use the PendingNetGame to get the NetDriver
-	if (NetDriver == nullptr)
+	if (LocalNetDriver == nullptr)
 	{
-		NetDriver = GameInstance->GetWorldContext()->PendingNetGame->GetNetDriver();
+		LocalNetDriver = GameInstance->GetWorldContext()->PendingNetGame->GetNetDriver();
 	}
 
-	USpatialNetDriver* SpatialNetDriver = Cast<USpatialNetDriver>(NetDriver);
+	USpatialNetDriver* SpatialNetDriver = Cast<USpatialNetDriver>(LocalNetDriver);
 	checkf(SpatialNetDriver, TEXT("SpatialNetDriver was invalid while accessing SpatialNetDriver!"));
 	return SpatialNetDriver;
+}
+
+void USpatialWorkerConnection::SetSpatialNetDriver(USpatialNetDriver* InNetDriver)
+{
+	NetDriver = InNetDriver;
 }
 
 void USpatialWorkerConnection::OnConnectionSuccess()
@@ -456,7 +468,10 @@ void USpatialWorkerConnection::OnConnectionSuccess()
 	}
 
 	GetSpatialNetDriverChecked()->OnConnectedToSpatialOS();
-	GameInstance->HandleOnConnected();
+	if (GameInstance.IsValid())
+	{
+		GameInstance->HandleOnConnected();
+	}
 }
 
 void USpatialWorkerConnection::OnPreConnectionFailure(const FString& Reason)
@@ -469,7 +484,7 @@ void USpatialWorkerConnection::OnConnectionFailure()
 {
 	bIsConnected = false;
 
-	if (GEngine != nullptr && GameInstance->GetWorld() != nullptr)
+	if (GEngine != nullptr && GameInstance != nullptr && GameInstance->GetWorld() != nullptr)
 	{
 		uint8_t ConnectionStatusCode = Worker_Connection_GetConnectionStatusCode(WorkerConnection);
 		const FString ErrorMessage(UTF8_TO_TCHAR(Worker_Connection_GetConnectionStatusDetailString(WorkerConnection)));

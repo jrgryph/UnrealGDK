@@ -133,6 +133,8 @@ public:
 	UPROPERTY()
 	ASpatialMetricsDisplay* SpatialMetricsDisplay;
 
+	USpatialWorkerConnection* WorkerConnection;
+
 	Worker_EntityId WorkerEntityId = SpatialConstants::INVALID_ENTITY_ID;
 
 	TMap<UClass*, TPair<AActor*, USpatialActorChannel*>> SingletonActorChannels;
@@ -248,3 +250,4 @@ private:
 	TArray<Worker_EntityId> TombstonedEntities;
 #endif
 };
+

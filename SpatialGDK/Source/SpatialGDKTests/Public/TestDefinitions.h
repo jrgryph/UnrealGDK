@@ -12,6 +12,10 @@
 	DEFINE_LATENT_AUTOMATION_COMMAND(CommandName); \
 	bool CommandName::Update()
 
+#define DEFINE_LATENT_COMMAND_ONE_PARAMETER(CommandName, ParamType1, Param1) \
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(CommandName, ParamType1, Param1); \
+	bool CommandName::Update()
+
 #define DEFINE_LATENT_COMMAND_TWO_PARAMETERS(CommandName, ParamType1, Param1, ParamType2, Param2) \
 DEFINE_LATENT_AUTOMATION_COMMAND_TWO_PARAMETER(CommandName, ParamType1, Param1, ParamType2, Param2); \
 	bool CommandName::Update()
