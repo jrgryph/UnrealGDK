@@ -145,14 +145,13 @@ public:
 
 	void OnEntityQueryResponse(const Worker_EntityQueryResponseOp& Op);
 
-	void CleanupDeletedEntity(Worker_EntityId EntityId);
-
 	void ResolvePendingOperations(UObject* Object, const FUnrealObjectRef& ObjectRef);
 	void FlushRetryRPCs();
 
 	void OnDisconnect(Worker_DisconnectOp& Op);
 
 	void RemoveActor(Worker_EntityId EntityId);
+	bool IsPendingOpsOnChannel(USpatialActorChannel* Channel);
 
 private:
 	void EnterCriticalSection();
@@ -245,12 +244,12 @@ private:
 	TArray<PendingAddComponentWrapper> PendingAddComponents;
 	TArray<Worker_RemoveComponentOp> QueuedRemoveComponentOps;
 
-	TMap<Worker_RequestId, TWeakObjectPtr<USpatialActorChannel>> PendingActorRequests;
+	TMap<Worker_RequestId_Key, TWeakObjectPtr<USpatialActorChannel>> PendingActorRequests;
 	FReliableRPCMap PendingReliableRPCs;
 
-	TMap<Worker_RequestId, EntityQueryDelegate> EntityQueryDelegates;
-	TMap<Worker_RequestId, ReserveEntityIDsDelegate> ReserveEntityIDsDelegates;
-	TMap<Worker_RequestId, CreateEntityDelegate> CreateEntityDelegates;
+	TMap<Worker_RequestId_Key, EntityQueryDelegate> EntityQueryDelegates;
+	TMap<Worker_RequestId_Key, ReserveEntityIDsDelegate> ReserveEntityIDsDelegates;
+	TMap<Worker_RequestId_Key, CreateEntityDelegate> CreateEntityDelegates;
 
 	// This will map PlayerController entities to the corresponding SpatialNetConnection
 	// for PlayerControllers that this server has authority over. This is used for player

@@ -123,6 +123,7 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 	ComponentWriteAcl.Add(SpatialConstants::ENTITY_ACL_COMPONENT_ID, AuthoritativeWorkerRequirementSet);
 	ComponentWriteAcl.Add(SpatialConstants::SERVER_RPC_ENDPOINT_COMPONENT_ID, AuthoritativeWorkerRequirementSet);
 	ComponentWriteAcl.Add(SpatialConstants::NETMULTICAST_RPCS_COMPONENT_ID, AuthoritativeWorkerRequirementSet);
+	ComponentWriteAcl.Add(SpatialConstants::DORMANT_COMPONENT_ID, AuthoritativeWorkerRequirementSet);
 	ComponentWriteAcl.Add(SpatialConstants::CLIENT_RPC_ENDPOINT_COMPONENT_ID, OwningClientOnlyRequirementSet);
 
 	if (Actor->IsNetStartupActor())
@@ -235,6 +236,11 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 		ComponentDatas.Add(AlwaysRelevant().CreateData());
 	}
 
+	if (Actor->NetDormancy >= DORM_DormantAll)
+	{
+		ComponentDatas.Add(Dormant().CreateData());
+	}
+
 	// If the Actor was loaded rather than dynamically spawned, associate it with its owning sublevel.
 	ComponentDatas.Add(CreateLevelComponentData(Actor));
 
@@ -341,7 +347,6 @@ Worker_RequestId USpatialSender::CreateEntity(USpatialActorChannel* Channel)
 
 	Worker_EntityId EntityId = Channel->GetEntityId();
 	Worker_RequestId CreateEntityRequestId = Connection->SendCreateEntityRequest(MoveTemp(ComponentDatas), &EntityId);
-	PendingActorRequests.Add(CreateEntityRequestId, Channel);
 
 	return CreateEntityRequestId;
 }
@@ -551,7 +556,7 @@ void USpatialSender::FlushPackedRPCs()
 
 		Worker_ComponentId ComponentId = NetDriver->IsServer() ? SpatialConstants::SERVER_RPC_ENDPOINT_COMPONENT_ID : SpatialConstants::CLIENT_RPC_ENDPOINT_COMPONENT_ID;
 		ComponentUpdate.component_id = ComponentId;
-		ComponentUpdate.schema_type = Schema_CreateComponentUpdate(ComponentId);
+		ComponentUpdate.schema_type = Schema_CreateComponentUpdate();
 		Schema_Object* EventsObject = Schema_GetComponentUpdateEvents(ComponentUpdate.schema_type);
 
 		for (const FPendingRPC& RPC : PendingRPCArray)
@@ -963,7 +968,8 @@ Worker_CommandRequest USpatialSender::CreateRPCCommandRequest(UObject* TargetObj
 {
 	Worker_CommandRequest CommandRequest = {};
 	CommandRequest.component_id = ComponentId;
-	CommandRequest.schema_type = Schema_CreateCommandRequest(ComponentId, SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID);
+	CommandRequest.command_index = SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID;
+	CommandRequest.schema_type = Schema_CreateCommandRequest();
 	Schema_Object* RequestObject = Schema_GetCommandRequestObject(CommandRequest.schema_type);
 
 	FUnrealObjectRef TargetObjectRef(PackageMap->GetUnrealObjectRefFromNetGUID(PackageMap->GetNetGUIDFromObject(TargetObject)));
@@ -980,7 +986,8 @@ Worker_CommandRequest USpatialSender::CreateRetryRPCCommandRequest(const FReliab
 {
 	Worker_CommandRequest CommandRequest = {};
 	CommandRequest.component_id = RPC.ComponentId;
-	CommandRequest.schema_type = Schema_CreateCommandRequest(RPC.ComponentId, SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID);
+	CommandRequest.command_index = SpatialConstants::UNREAL_RPC_ENDPOINT_COMMAND_ID;
+	CommandRequest.schema_type = Schema_CreateCommandRequest();
 	Schema_Object* RequestObject = Schema_GetCommandRequestObject(CommandRequest.schema_type);
 
 	RPCPayload::WriteToSchemaObject(RequestObject, TargetObjectOffset, RPC.RPCIndex, RPC.Payload.GetData(), RPC.Payload.Num());
@@ -993,7 +1000,7 @@ Worker_ComponentUpdate USpatialSender::CreateRPCEventUpdate(UObject* TargetObjec
 	Worker_ComponentUpdate ComponentUpdate = {};
 
 	ComponentUpdate.component_id = ComponentId;
-	ComponentUpdate.schema_type = Schema_CreateComponentUpdate(ComponentId);
+	ComponentUpdate.schema_type = Schema_CreateComponentUpdate();
 	Schema_Object* EventsObject = Schema_GetComponentUpdateEvents(ComponentUpdate.schema_type);
 	Schema_Object* EventData = Schema_AddObject(EventsObject, SpatialConstants::UNREAL_RPC_ENDPOINT_EVENT_ID);
 
@@ -1062,7 +1069,8 @@ void USpatialSender::SendEmptyCommandResponse(Worker_ComponentId ComponentId, Sc
 {
 	Worker_CommandResponse Response = {};
 	Response.component_id = ComponentId;
-	Response.schema_type = Schema_CreateCommandResponse(ComponentId, CommandIndex);
+	Response.command_index = CommandIndex;
+	Response.schema_type = Schema_CreateCommandResponse();
 
 	Connection->SendCommandResponse(RequestId, &Response);
 }
