@@ -1320,7 +1320,7 @@ void USpatialNetDriver::TickDispatch(float DeltaTime)
 
 		for (Worker_OpList* OpList : OpLists)
 		{
-			Dispatcher->ProcessOps(OpList);
+			Dispatcher->ProcessOps(OpList, IsServer());
 
 			Worker_OpList_Destroy(OpList);
 		}
@@ -2071,7 +2071,7 @@ void USpatialNetDriver::HandleStartupOpQueueing(const TArray<Worker_OpList*>& In
 
 	for (Worker_OpList* OpList : QueuedStartupOpLists)
 	{
-		Dispatcher->ProcessOps(OpList);
+		Dispatcher->ProcessOps(OpList, IsServer());
 		Worker_OpList_Destroy(OpList);
 	}
 
@@ -2175,7 +2175,7 @@ void USpatialNetDriver::SelectiveProcessOps(TArray<Worker_Op*> FoundOps)
 		SingleOpList.op_count = 1;
 		SingleOpList.ops = Op;
 
-		Dispatcher->ProcessOps(&SingleOpList);
+		Dispatcher->ProcessOps(&SingleOpList, IsServer());
 		Dispatcher->MarkOpToSkip(Op);
 	}
 }

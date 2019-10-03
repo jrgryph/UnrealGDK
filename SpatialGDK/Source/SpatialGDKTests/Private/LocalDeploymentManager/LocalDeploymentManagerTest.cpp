@@ -12,6 +12,13 @@
 #include "EngineClasses/SpatialNetDriver.h"
 #include "Interop/Connection/SpatialWorkerConnection.h"
 
+//#include "AutomationEditorCommon.h"
+//#include "AutomationCommon.h"
+#include "LevelEditor.h"
+#include "UnrealEdGlobals.h"
+#include "UnrealEd/Classes/Editor/UnrealEdEngine.h"
+
+
 #include "CoreMinimal.h"
 
 #define LOCALDEPLOYMENT_TEST(TestName) \
@@ -122,7 +129,7 @@ DEFINE_LATENT_COMMAND(StopDeployment)
 	return true;
 }
 
-DEFINE_LATENT_COMMAND_ONE_PARAMETER(WaitForDeploymentFor, double, WaitTime)
+DEFINE_LATENT_COMMAND_ONE_PARAMETER(WaitFor, double, WaitTime)
 {
 	const double NewTime = FPlatformTime::Seconds();
 	if (NewTime - StartTime >= WaitTime)
@@ -211,24 +218,25 @@ static USpatialWorkerConnection* SpatialConnection = nullptr;
 
 DEFINE_LATENT_COMMAND(CreateDriverAndConnection)
 {
-	//USpatialNetDriver* Driver = NewObject<USpatialNetDriver>();
-	Driver = NewObject<USpatialNetDriver>();
-	FString Error;
-	FURL URL;
-	URL.Protocol = TEXT("unreal");
-	URL.Port = 7777;
-	URL.Valid = 1;
-	URL.Map = TEXT("/Game/Maps/UEDPIE_1_FPS-Start_Tiny");
+	{
+		//USpatialNetDriver* Driver = NewObject<USpatialNetDriver>();
+		Driver = NewObject<USpatialNetDriver>();
+		FString Error;
+		FURL URL;
+		URL.Protocol = TEXT("unreal");
+		URL.Port = 7777;
+		URL.Valid = 1;
+		URL.Map = TEXT("/Game/Maps/UEDPIE_1_FPS-Start_Tiny");
 
-	//USpatialWorkerConnection* SpatialConnection = NewObject<USpatialWorkerConnection>();
-	SpatialConnection = NewObject<USpatialWorkerConnection>();
-	SpatialConnection->Init(nullptr);
+		SpatialConnection = NewObject<USpatialWorkerConnection>();
+		SpatialConnection->Init(nullptr);
 
-	Driver->WorkerConnection = SpatialConnection;
-	SpatialConnection->SetSpatialNetDriver(Driver);
+		Driver->WorkerConnection = SpatialConnection;
+		SpatialConnection->SetSpatialNetDriver(Driver);
 
-	Driver->InitBase(false, nullptr, URL, false, Error);
-	SpatialConnection->Connect(false);
+		Driver->InitBase(false, nullptr, URL, false, Error);
+		SpatialConnection->Connect(false);
+	}
 
 	return true;
 }
@@ -238,7 +246,12 @@ DEFINE_LATENT_COMMAND(WaitHere)
 	//SpatialConnection->SendMetrics();
 	SpatialConnection;
 	Driver;
-	ATestActor* TestActor = NewObject<ATestActor>();
+	//ATestActor* TestActor = NewObject<ATestActor>();
+	//ATestActor* TestActor = GUnrealEd->GetWorld()->SpawnActor<ATestActor>();
+	FURL URL;
+	GWorld->InitializeActorsForPlay(URL);
+	GWorld->BeginPlay();
+	ATestActor* TestActor = GWorld->SpawnActor<ATestActor>();
 	TestActor->DoSomethingOnClient();
 	TestActor->DoSomethingOnServer();
 	//void* Parameters = nullptr;
@@ -250,13 +263,47 @@ DEFINE_LATENT_COMMAND(WaitHere)
 	return true;
 }
 
+DEFINE_LATENT_COMMAND_ONE_PARAMETER(StartPlaySession, bool, bSimulateInEditor)
+{
+	FLevelEditorModule& LevelEditorModule = FModuleManager::Get().GetModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
+	TSharedPtr<class ILevelViewport> ActiveLevelViewport = LevelEditorModule.GetFirstActiveViewport();
+
+	GUnrealEd->RequestPlaySession(false, ActiveLevelViewport, bSimulateInEditor, NULL, NULL, -1, false);
+	return true;
+}
+
+DEFINE_LATENT_COMMAND(StopPlaySession)
+{
+	GUnrealEd->RequestEndPlayMap();
+	return true;
+}
+
 LOCALDEPLOYMENT_TEST(Sometest)
 {
 	ADD_LATENT_AUTOMATION_COMMAND(StartDeployment());
 	ADD_LATENT_AUTOMATION_COMMAND(WaitForDeployment(this, EDeploymentState::IsRunning));
-	ADD_LATENT_AUTOMATION_COMMAND(WaitForDeploymentFor(10.0));
+	ADD_LATENT_AUTOMATION_COMMAND(WaitFor(10.0));
 	ADD_LATENT_AUTOMATION_COMMAND(CreateDriverAndConnection());
-	ADD_LATENT_AUTOMATION_COMMAND(WaitForDeploymentFor(10.0));
+	ADD_LATENT_AUTOMATION_COMMAND(WaitFor(10.0));
 	ADD_LATENT_AUTOMATION_COMMAND(WaitHere());
     return true;
+}
+
+LOCALDEPLOYMENT_TEST(MyServerPie)
+{
+	ADD_LATENT_AUTOMATION_COMMAND(StartPlaySession(true));
+	ADD_LATENT_AUTOMATION_COMMAND(WaitFor(30.0f));
+	ADD_LATENT_AUTOMATION_COMMAND(StopPlaySession);
+
+	return true;
+}
+
+LOCALDEPLOYMENT_TEST(MyClientPie)
+{
+	ADD_LATENT_AUTOMATION_COMMAND(StartPlaySession(false));
+	ADD_LATENT_AUTOMATION_COMMAND(WaitFor(15.0f));
+	ADD_LATENT_AUTOMATION_COMMAND(WaitHere());
+	ADD_LATENT_AUTOMATION_COMMAND(StopPlaySession);
+
+	return true;
 }

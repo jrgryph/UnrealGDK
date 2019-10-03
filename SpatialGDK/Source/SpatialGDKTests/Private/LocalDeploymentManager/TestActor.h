@@ -27,7 +27,7 @@ public:
 	UFUNCTION(Client, Reliable)
 	void DoSomethingOnClient();
 
-	virtual void ProcessEvent(UFunction* Function, void* Parameters) override;
+	//virtual void ProcessEvent(UFunction* Function, void* Parameters) override;
 
 //	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 //		void StartPrimaryUse();

@@ -20,7 +20,53 @@ void USpatialDispatcher::Init(USpatialReceiver* InReceiver, USpatialStaticCompon
 	SpatialMetrics = InSpatialMetrics;
 }
 
-void USpatialDispatcher::ProcessOps(Worker_OpList* OpList)
+FString OpToString(uint8_t  OpType)
+{
+	switch (OpType)
+	{
+	case WORKER_OP_TYPE_DISCONNECT:
+		return TEXT("WORKER_OP_TYPE_DISCONNECT");
+	case WORKER_OP_TYPE_FLAG_UPDATE:
+		return TEXT("WORKER_OP_TYPE_FLAG_UPDATE");
+	case WORKER_OP_TYPE_LOG_MESSAGE:
+		return TEXT("WORKER_OP_TYPE_LOG_MESSAGE");
+	case WORKER_OP_TYPE_METRICS:
+		return TEXT("WORKER_OP_TYPE_METRICS");
+	case WORKER_OP_TYPE_CRITICAL_SECTION:
+		return TEXT("WORKER_OP_TYPE_CRITICAL_SECTION");
+	case WORKER_OP_TYPE_ADD_ENTITY:
+		return TEXT("WORKER_OP_TYPE_ADD_ENTITY");
+	case WORKER_OP_TYPE_REMOVE_ENTITY:
+		return TEXT("WORKER_OP_TYPE_REMOVE_ENTITY");
+	//case WORKER_OP_TYPE_RESERVE_ENTITY_ID_RESPONSE:
+	//	return TEXT("WORKER_OP_TYPE_RESERVE_ENTITY_ID_RESPONSE");
+	case WORKER_OP_TYPE_RESERVE_ENTITY_IDS_RESPONSE:
+		return TEXT("WORKER_OP_TYPE_RESERVE_ENTITY_IDS_RESPONSE");
+	case WORKER_OP_TYPE_CREATE_ENTITY_RESPONSE:
+		return TEXT("WORKER_OP_TYPE_CREATE_ENTITY_RESPONSE");
+	case WORKER_OP_TYPE_DELETE_ENTITY_RESPONSE:
+		return TEXT("WORKER_OP_TYPE_DELETE_ENTITY_RESPONSE");
+	case WORKER_OP_TYPE_ENTITY_QUERY_RESPONSE:
+		return TEXT("WORKER_OP_TYPE_ENTITY_QUERY_RESPONSE");
+	case WORKER_OP_TYPE_ADD_COMPONENT:
+		return TEXT("WORKER_OP_TYPE_ADD_COMPONENT");
+	case WORKER_OP_TYPE_REMOVE_COMPONENT:
+		return TEXT("WORKER_OP_TYPE_REMOVE_COMPONENT");
+	case WORKER_OP_TYPE_AUTHORITY_CHANGE:
+		return TEXT("WORKER_OP_TYPE_AUTHORITY_CHANGE");
+	case WORKER_OP_TYPE_COMPONENT_UPDATE:
+		return TEXT("WORKER_OP_TYPE_COMPONENT_UPDATE");
+	case WORKER_OP_TYPE_COMMAND_REQUEST:
+		return TEXT("WORKER_OP_TYPE_COMMAND_REQUEST");
+	case WORKER_OP_TYPE_COMMAND_RESPONSE:
+		return TEXT("WORKER_OP_TYPE_COMMAND_RESPONSE");
+	default:
+		return TEXT("");
+	}
+}
+
+
+void USpatialDispatcher::ProcessOps(Worker_OpList* OpList, bool bIsServer)
 {
 	for (size_t i = 0; i < OpList->op_count; ++i)
 	{
@@ -30,7 +76,26 @@ void USpatialDispatcher::ProcessOps(Worker_OpList* OpList)
 			OpsToSkip.Contains(Op))
 		{
 			OpsToSkip.Remove(Op);
+
+			if (!bIsServer)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Client: skipping Op: %s"), *OpToString(Op->op_type));
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Server: skipping Op: %s"), *OpToString(Op->op_type));
+			}
+
 			continue;
+		}
+
+		if (!bIsServer)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Client: processing Op: %s"), *OpToString(Op->op_type));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Server: processing Op: %s"), *OpToString(Op->op_type));
 		}
 
 		if (IsExternalSchemaOp(Op))

@@ -30,7 +30,7 @@ public:
 	using FCallbackId = uint32;
 
 	void Init(USpatialReceiver* InReceiver, USpatialStaticComponentView* InStaticComponentView, USpatialMetrics* InSpatialMetrics);
-	void ProcessOps(Worker_OpList* OpList);
+	void ProcessOps(Worker_OpList* OpList, bool bIsServer);
 
 	// The following 2 methods should *only* be used by the Startup OpList Queueing flow
 	// from the SpatialNetDriver, and should be temporary since an alternative solution will be available via the Worker SDK soon.

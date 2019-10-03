@@ -37,14 +37,15 @@ void ATestActor::DoSomethingOnClient_Implementation()
 	UE_LOG(LogTemp, Warning, TEXT("Calling Client Function"));
 }
 
-void ATestActor::ProcessEvent(UFunction* Function, void* Parameters)
-{
-	int32 FunctionCallspace = GetFunctionCallspace(Function, Parameters, NULL);
-	if (FunctionCallspace & FunctionCallspace::Remote)
-	{
-		CallRemoteFunction(Function, Parameters, NULL, NULL);
-	}
-}
+//void ATestActor::ProcessEvent(UFunction* Function, void* Parameters)
+//{
+//	int32 FunctionCallspace = GetFunctionCallspace(Function, Parameters, NULL);
+//	//if (FunctionCallspace & FunctionCallspace::Remote)
+//	{
+//		CallRemoteFunction(Function, Parameters, NULL, NULL);
+//	}
+//}
+
 //void ATestActor::BeginPlay()
 //{
 //	Super::BeginPlay();
