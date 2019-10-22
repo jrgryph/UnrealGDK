@@ -43,19 +43,3 @@ Wait-Process -Id (Get-Process -InputObject $run_tests_proc).id
 # Clean up any spatiald and java (i.e. runtime) processes that may not have been shut down
 Start-Process spatial "service","stop" -Wait -ErrorAction Stop -NoNewWindow
 Stop-Process -Name "java" -Force -ErrorAction SilentlyContinue
-
-## Read the test results, and pass/fail this build step 
-$results_path = Join-Path -Path $output_dir_absolute -ChildPath "index.json"
-$results_json = Get-Content $results_path -Raw
-
-$results_obj = ConvertFrom-Json $results_json
-
-Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
-
-if ($results_obj.failed -ne 0) {
-    $fail_msg = "$($results_obj.failed) tests failed. Logs for these tests are contained in the tests.log artifact."
-    Write-Log $fail_msg
-    Throw $fail_msg
-}
-
-Write-Log "All tests passed!"
