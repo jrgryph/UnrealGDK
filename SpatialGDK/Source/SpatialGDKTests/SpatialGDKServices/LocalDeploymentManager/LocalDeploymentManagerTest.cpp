@@ -122,6 +122,17 @@ DEFINE_LATENT_COMMAND_TWO_PARAMETERS(WaitForDeployment, FAutomationTestBase*, Te
 	const double NewTime = FPlatformTime::Seconds();
 	if (NewTime - StartTime >= MAX_WAIT_TIME_FOR_LOCAL_DEPLOYMENT_OPERATION)
 	{
+		// the given time for the deployment to start/stop has expired - test its current state
+		FLocalDeploymentManager* LocalDeploymentManager = GetLocalDeploymentManager();
+
+		if (ExpectedDeploymentState == EDeploymentState::IsRunning)
+		{
+			Test->TestTrue(TEXT("Deployment is running"), LocalDeploymentManager->IsLocalDeploymentRunning() && !LocalDeploymentManager->IsDeploymentStopping());
+		}
+		else
+		{
+			Test->TestFalse(TEXT("Deployment is not running"), LocalDeploymentManager->IsLocalDeploymentRunning() || LocalDeploymentManager->IsDeploymentStopping());
+		}
 		return true;
 	}
 
@@ -152,8 +163,7 @@ DEFINE_LATENT_COMMAND_TWO_PARAMETERS(CheckDeploymentState, FAutomationTestBase*,
 	return true;
 }
 
-// UNR-1975 after fixing the flakiness of these tests, and investigating how they can be run in CI (UNR-1969), re-enable them
-/*LOCALDEPLOYMENT_TEST(GIVEN_no_deployment_running_WHEN_deployment_started_THEN_deployment_running)
+LOCALDEPLOYMENT_TEST(GIVEN_no_deployment_running_WHEN_deployment_started_THEN_deployment_running)
 {
 	// GIVEN
 	ADD_LATENT_AUTOMATION_COMMAND(StopDeployment());
@@ -187,4 +197,4 @@ LOCALDEPLOYMENT_TEST(GIVEN_deployment_running_WHEN_deployment_stopped_THEN_deplo
 	// THEN
 	ADD_LATENT_AUTOMATION_COMMAND(CheckDeploymentState(this, EDeploymentState::IsNotRunning));
     return true;
-}*/
+}
