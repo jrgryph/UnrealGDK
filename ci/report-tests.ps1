@@ -41,15 +41,17 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
 
-Start-Process buildkite-agent "artifact","upload","ci/TestResults/*" -Wait -ErrorAction Stop -NoNewWindow
+# Upload artifacts to Buildkite
+Start-Process buildkite-agent "artifact","upload","ci/TestResults/*" -Wait -ErrorAction Stop -NoNewWindow -RedirectStandardOutput "artifact_upload_output.txt"
 if (-Not $?) {
     throw "Failed to upload build artifacts."
 }
 
-$artifacts = Invoke-WebRequest -URI "https://api.buildkite.com/v2/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_NUMBER
-/artifacts"
+# Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
+$test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -Path "artifact_upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
+$test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -Path "artifact_upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
 
-## Read the test results
+# Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
 $results_json = Get-Content $results_path -Raw
 
@@ -106,13 +108,13 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                             @{
                                 type = "button"
                                 text = ":bar_chart: Test results"
-                                url = "$build_url"
+                                url = "$env:BUILDKITE_ARTIFACT_UPLOAD_DESTINATION/artifacts/$test_results_id"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
                                 text = ":page_with_curl: Test log"
-                                url = "$build_url"
+                                url = "$env:BUILDKITE_ARTIFACT_UPLOAD_DESTINATION/artifacts/$test_log_id"
                                 style = "primary"
                             }
                         )
@@ -125,11 +127,10 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     Invoke-WebRequest -UseBasicParsing "$slack_webhook_url" -ContentType "application/json" -Method POST -Body "$json_request"
 }
 
-## Fail this build if any tests failed
+# Fail this build if any tests failed
 if (-Not $tests_passed) {
     $fail_msg = "$($results_obj.failed) tests failed. Logs for these tests are contained in the tests.log artifact."
     Write-Log $fail_msg
     Throw $fail_msg
 }
-
 Write-Log "All tests passed!"
