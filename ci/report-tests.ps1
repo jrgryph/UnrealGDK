@@ -37,7 +37,17 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Get-Content "$gdk_home/annotation.md" | buildkite-agent annotate `
         --context "unreal-gdk-test-artifact-location"  `
         --style info
+    
+    Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
+
+## Read the test results
+$results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
+$results_json = Get-Content $results_path -Raw
+
+$results_obj = ConvertFrom-Json $results_json
+
+$tests_passed = $results_obj.failed -ne 0
 
 if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIFY) -And $env:BUILDKITE_SLACK_NOTIFY -eq "true")) {
     # Send a Slack notification with a link to the build.
@@ -50,11 +60,11 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     
     $json_message = [ordered]@{
         text = $(if ((Test-Path env:BUILDKITE_NIGHTLY_BUILD) -And $env:BUILDKITE_NIGHTLY_BUILD -eq "true") {":night_with_stars: Nightly build of GDK for Unreal"} `
-                else {"GDK for Unreal build by $env:BUILDKITE_BUILD_CREATOR"}) + " completed succesfully."
+                else {"GDK for Unreal build by $env:BUILDKITE_BUILD_CREATOR"}) + $(if ($tests_passed) {" passed testing."} else {" failed testing."})
         attachments= @(
                 @{
-                    fallback = "Find build here: $build_url and potential deployment here: $deployment_url"
-                    color = "good"
+                    fallback = "Find the build at $build_url"
+                    color = $(if ($tests_passed) {"good"} else {"bad"})
                     fields = @(
                             @{
                                 title = "Build Message"
@@ -64,6 +74,11 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                             @{
                                 title = "GDK branch"
                                 value = "$env:BUILDKITE_BRANCH"
+                                short = "true"
+                            }
+                            @{
+                                title = "Tests passed"
+                                value = "$($results_obj.succeeded) / $($results_obj.succeeded + $results_obj.failed)"
                                 short = "true"
                             }
                         )
@@ -80,6 +95,18 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                                 url = "$build_url"
                                 style = "primary"
                             }
+                            @{
+                                type = "button"
+                                text = ":buildkite: Test results"
+                                url = "$build_url"
+                                style = "primary"
+                            }
+                            @{
+                                type = "button"
+                                text = ":buildkite: Test log"
+                                url = "$build_url"
+                                style = "primary"
+                            }
                         )
                 }
             )
@@ -89,3 +116,12 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
 
     Invoke-WebRequest -UseBasicParsing "$slack_webhook_url" -ContentType "application/json" -Method POST -Body "$json_request"
 }
+
+## Fail this build if any tests failed
+if ($tests_passed) {
+    $fail_msg = "$($results_obj.failed) tests failed. Logs for these tests are contained in the tests.log artifact."
+    Write-Log $fail_msg
+    Throw $fail_msg
+}
+
+Write-Log "All tests passed!"
