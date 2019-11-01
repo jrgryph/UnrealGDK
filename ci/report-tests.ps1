@@ -48,8 +48,8 @@ if (-Not $?) {
 }
 
 # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-$test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -Path "artifact_upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
-$test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -Path "artifact_upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
+$test_results_id = (Select-String -Pattern "[^ ]* ci\TestResults\index.html" -Path "artifact_upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
+$test_log_id = (Select-String -Pattern "[^ ]* ci\TestResults\tests.log" -Path "artifact_upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
 
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
