@@ -55,9 +55,9 @@ $test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -Path 
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
 $results_json = Get-Content $results_path -Raw
 
-$results_obj = ConvertFrom-Json $results_json
+$test_results_obj = ConvertFrom-Json $results_json
 
-$tests_passed = $results_obj.failed -eq 0
+$tests_passed = $test_results_obj.failed -eq 0
 
 if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIFY) -And $env:BUILDKITE_SLACK_NOTIFY -eq "true")) {
     # Send a Slack notification with a link to the build.
@@ -88,7 +88,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                             }
                             @{
                                 title = "Tests passed"
-                                value = "$($results_obj.succeeded) / $($results_obj.succeeded + $results_obj.failed)"
+                                value = "$($test_results_obj.succeeded) / $($test_results_obj.succeeded + $test_results_obj.failed)"
                                 short = "true"
                             }
                         )
@@ -129,7 +129,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
 
 # Fail this build if any tests failed
 if (-Not $tests_passed) {
-    $fail_msg = "$($results_obj.failed) tests failed. Logs for these tests are contained in the tests.log artifact."
+    $fail_msg = "$($test_results_obj.failed) tests failed. Logs for these tests are contained in the tests.log artifact."
     Write-Log $fail_msg
     Throw $fail_msg
 }
