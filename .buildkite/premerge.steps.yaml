@@ -49,7 +49,6 @@ steps:
     artifact_paths:
       - "../UnrealEngine/Engine/Programs/AutomationTool/Saved/Logs/*"
       - "../TestProject/Saved/Logs/*"
-      - "ci/TestResults/*"
 
   - label: "build-GDK-:linux:"
     command: "powershell ./ci/setup-build-test-gdk.ps1 -target_platform Linux"
