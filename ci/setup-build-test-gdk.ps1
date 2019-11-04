@@ -12,7 +12,7 @@ param(
 )
 
 # Upload artifacts to Buildkite
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Ignore'
 
 New-Item -ItemType directory -Path "./testdir"
 
@@ -33,7 +33,7 @@ $test_results_id
 "running script:"
 &$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
 
-
+$ErrorActionPreference = 'Stop'
 
 . "$PSScriptRoot\common.ps1"
 
