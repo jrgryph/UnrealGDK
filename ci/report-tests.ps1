@@ -42,19 +42,14 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
 }
 
 # Upload artifacts to Buildkite
-Start-Process buildkite-agent "artifact","upload","ci/TestResults/*" -Wait -ErrorAction Stop -NoNewWindow -RedirectStandardOutput "artifact_upload_output.txt"
-if (-Not $?) {
-    throw "Failed to upload build artifacts."
-}
-
-Start-Process buildkite-agent "artifact","upload","artifact_upload_output.txt" -Wait -ErrorAction Stop -NoNewWindow
+$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" | Out-String
 if (-Not $?) {
     throw "Failed to upload build artifacts."
 }
 
 # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-$test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -Path "artifact_upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
-$test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -Path "artifact_upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
+$test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+$test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
 
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
