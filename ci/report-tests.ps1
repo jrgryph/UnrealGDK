@@ -41,8 +41,8 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
 
-# Upload artifacts to Buildkite
-$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" | Out-String
+# Upload artifacts to Buildkite, merge all streams to extract artifact ID in next step
+$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *>1 | Out-String
 if (-Not $?) {
     throw "Failed to upload build artifacts."
 }
