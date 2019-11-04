@@ -42,7 +42,7 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
 }
 
 mkdir $test_result_dir
-"test" > $test_result_dir\test.txt
+"test" > $test_result_dir\index.html
 $test_result_dir
 $test_result_dir.Replace("\", "\\")
 
