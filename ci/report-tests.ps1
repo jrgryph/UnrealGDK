@@ -47,9 +47,6 @@ if (-Not $?) {
     throw "Failed to upload build artifacts."
 }
 
-"upload output:"
-$upload_output
-
 # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
 $test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
 $test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
