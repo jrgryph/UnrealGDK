@@ -41,17 +41,8 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
 
-mkdir $test_result_dir
-"test" > $test_result_dir\index.html
-$test_result_dir
-$test_result_dir.Replace("\", "\\")
-
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
-$upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } -ErrorAction SilentlyContinue | Out-String
-$upload_output
-
-$test_results_id = (Select-String -Pattern "[^ ]* [^ ]*\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
-$test_results_id
+$upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 -ErrorAction SilentlyContinue | %{ "$_" } | Out-String
 
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
@@ -65,8 +56,14 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     # Send a Slack notification with a link to the build.
     
     # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-    $test_results_id = (Select-String -Pattern "[^ ]* [^ ]*\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
-    $test_log_id = (Select-String -Pattern "[^ ]* [^ ]*\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+    Try {
+        $test_results_id = (Select-String -Pattern "[^ ]* [^ ]*\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+        $test_log_id = (Select-String -Pattern "[^ ]* [^ ]*\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+    }
+    Catch {
+        Write-Error "Failed to parse artifact ID from the buildkite uploading output: $upload_output"
+        Throw $_
+    }
 
     # Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
     $slack_webhook_secret = "$(imp-ci secrets read --environment=production --buildkite-org=improbable --secret-type=slack-webhook --secret-name=unreal-gdk-slack-web-hook)"

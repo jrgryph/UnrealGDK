@@ -11,8 +11,6 @@ param(
   [string] $test_repo_map = "EmptyGym"
 )
 
-&$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
-
 . "$PSScriptRoot\common.ps1"
 
 Start-Event "cleanup-symlinks" "command"
