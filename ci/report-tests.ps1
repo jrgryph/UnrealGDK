@@ -42,7 +42,9 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
 }
 
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
-$upload_output = (buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1) -ErrorAction SilentlyContinue | %{ "$_" } | Out-String
+$ErrorActionPreference = 'Continue' # For some reason every piece of output being piped is considered an error
+$upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } | Out-String
+$ErrorActionPreference = 'Stop' # Restore preference
 
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
