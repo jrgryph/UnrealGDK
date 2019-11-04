@@ -11,29 +11,9 @@ param(
   [string] $test_repo_map = "EmptyGym"
 )
 
-# Upload artifacts to Buildkite
-New-Item -ItemType directory -Path "./testdir"
-
-"a \b" | Out-File -FilePath "testdir/test.txt" 
-
-$upload_output = buildkite-agent "artifact" "upload" "testdir/test.txt" *>&1 | %{ "$_" } | Out-String
-
-"-------------- upload output:"
-$upload_output
-"--------------"
-
-# Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-$test_results_id = (Select-String -Pattern "[^ ]* testdir\\test.txt" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
-
-"-- id: "
-$test_results_id
-
-
-
+&$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
 
 . "$PSScriptRoot\common.ps1"
-"running script:"
-&$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
 
 Start-Event "cleanup-symlinks" "command"
 &$PSScriptRoot"\cleanup.ps1" -unreal_path "$unreal_path"
