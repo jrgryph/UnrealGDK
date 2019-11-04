@@ -42,7 +42,7 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
 }
 
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
-$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *>&1 | %{ '$_' } | Out-String
+$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *>&1 | %{ "'" + "$_" + "'" } | Out-String
 if (-Not $?) {
     throw "Failed to upload build artifacts."
 }
