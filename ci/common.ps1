@@ -40,4 +40,4 @@ function Finish-Event() {
     ) | Out-Null
 }
 
-$ErrorActionPreference = 'Stop'
+#$ErrorActionPreference = 'Stop'
