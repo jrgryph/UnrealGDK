@@ -42,7 +42,8 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
 }
 
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
-$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *>&1 | %{ "'" + "$_" + "'" } | Out-String
+# $upload_output = buildkite-agent "artifact" "upload" "testdir/test.txt" *>&1 | %{ "'" + $_ + "'" } | Out-String
+$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *> "upload_output.txt"
 if (-Not $?) {
     throw "Failed to upload build artifacts."
 }
@@ -59,8 +60,8 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     # Send a Slack notification with a link to the build.
     
     # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-    $test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
-    $test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+    $test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -Path "upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
+    $test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -Path "upload_output.txt" -CaseSensitive).Matches[0].Value.Split(" ")[0]
 
     # Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
     $slack_webhook_secret = "$(imp-ci secrets read --environment=production --buildkite-org=improbable --secret-type=slack-webhook --secret-name=unreal-gdk-slack-web-hook)"
