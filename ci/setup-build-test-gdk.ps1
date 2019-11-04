@@ -32,12 +32,12 @@ $test_results_id
 
 
 . "$PSScriptRoot\common.ps1"
+"running script:"
+&$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
 
 Start-Event "cleanup-symlinks" "command"
 &$PSScriptRoot"\cleanup.ps1" -unreal_path "$unreal_path"
 Finish-Event "cleanup-symlinks" "command"
-"running script:"
-&$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
 
 # Download Unreal Engine
 Start-Event "get-unreal-engine" "command"
