@@ -46,10 +46,8 @@ mkdir ci/TestResults
 
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
 $upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } -ErrorAction SilentlyContinue | Out-String
-$upload_output
-if (-Not $?) {
-    throw "Failed to upload build artifacts."
-}
+$test_results_id = (Select-String -Pattern "[^ ]* $test_result_dir.Replace("\", "\\")\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+$test_results_id
 
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
@@ -63,7 +61,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     # Send a Slack notification with a link to the build.
     
     # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-    $test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+    $test_results_id = (Select-String -Pattern "[^ ]* $test_result_dir.Replace("\", "\\")\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
     $test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
 
     # Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
