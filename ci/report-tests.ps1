@@ -45,7 +45,7 @@ mkdir ci/TestResults
 "test" > ci/TestResults/test.txt
 
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
-$upload_output = buildkite-agent "artifact" "upload" "ci/TestResult/*" *>&1 | %{ "'" + $_ + "'" } | Out-String
+$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *>&1 | %{ "'" + $_ + "'" } | Out-String
 #$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *> "upload_output.txt"
 if (-Not $?) {
     throw "Failed to upload build artifacts."
