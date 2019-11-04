@@ -12,13 +12,14 @@ param(
 )
 
 # Upload artifacts to Buildkite
-$ErrorActionPreference = 'Ignore'
 
 New-Item -ItemType directory -Path "./testdir"
 
 "a \b" | Out-File -FilePath "testdir/test.txt" 
 
+$ErrorActionPreference = 'Ignore'
 $upload_output = buildkite-agent "artifact" "upload" "testdir/test.txt" *>&1 | %{ "$_" } | Out-String
+$ErrorActionPreference = 'Stop'
 
 "-------------- upload output:"
 $upload_output
@@ -33,7 +34,6 @@ $test_results_id
 "running script:"
 &$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
 
-$ErrorActionPreference = 'Stop'
 
 . "$PSScriptRoot\common.ps1"
 
