@@ -14,10 +14,7 @@ param(
 # Upload artifacts to Buildkite
 "a \b" | Out-File -FilePath "test.txt" 
 
-$upload_output = cmd /c buildkite-agent "artifact" "upload" "test.txt" *> upload.txt
-Get-Content upload.txt
-
-$upload_output = cmd /c buildkite-agent "artifact" "upload" "test.txt" *>&1 |  Out-String
+$upload_output = cmd /c buildkite-agent "artifact" "upload" "test.txt" 
 
 "-------------- upload output:"
 $upload_output
