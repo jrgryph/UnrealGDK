@@ -19,7 +19,7 @@ New-Item -ItemType directory -Path "./testdir"
 $upload_output = buildkite-agent "artifact" "upload" "testdir/*" *> "test_output.txt"
 
 "-------------- upload output:"
-$upload_output
+Get-Content "test_output.txt"
 "--------------"
 
 # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
