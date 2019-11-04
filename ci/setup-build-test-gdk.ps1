@@ -16,7 +16,7 @@ New-Item -ItemType directory -Path "./testdir"
 
 "a \b" | Out-File -FilePath "testdir/test.txt" 
 
-$upload_output = buildkite-agent "artifact" "upload" "testdir/test.txt" *>&1 | %{ "'" + $_ + "'" } | Out-String
+$upload_output = buildkite-agent "artifact" "upload" "testdir/test.txt" *>&1 | %{ $_ } | Out-String
 
 "-------------- upload output:"
 $upload_output
