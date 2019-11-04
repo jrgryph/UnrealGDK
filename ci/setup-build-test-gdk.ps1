@@ -19,11 +19,11 @@ New-Item -ItemType directory -Path "./testdir"
 $upload_output = buildkite-agent "artifact" "upload" "testdir/test.txt" *>&1 | %{ "'" + $_ + "'" } | Out-String
 
 "-------------- upload output:"
-Get-Content output.txt
+$upload_output
 "--------------"
 
 # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-$test_results_id = (Select-String -Pattern "[^ ]* testdir/test.txt" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+$test_results_id = (Select-String -Pattern "[^ ]* testdir\\test.txt" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
 
 "-- id: "
 $test_results_id
