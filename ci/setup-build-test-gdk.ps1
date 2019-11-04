@@ -15,9 +15,6 @@ param(
 "a \b" | Out-File -FilePath "test.txt" 
 
 buildkite-agent "artifact" "upload" "test.txt" *> upload.txt
-if (-Not $?) {
-    throw "Failed to upload build artifacts."
-}
 
 "upload output:"
 Get-Content upload.txt
