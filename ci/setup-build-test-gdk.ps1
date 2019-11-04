@@ -12,6 +12,8 @@ param(
 )
 
 # Upload artifacts to Buildkite
+New-Item -ItemType directory -Path "./testdir"
+
 "a \b" | Out-File -FilePath "testdir/test.txt" 
 
 
