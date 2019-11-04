@@ -42,14 +42,12 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
 }
 
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
-$upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 -ErrorAction SilentlyContinue | %{ "$_" } | Out-String
+$upload_output = (buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1) -ErrorAction SilentlyContinue | %{ "$_" } | Out-String
 
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
 $results_json = Get-Content $results_path -Raw
-
 $test_results_obj = ConvertFrom-Json $results_json
-
 $tests_passed = $test_results_obj.failed -eq 0
 
 if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIFY) -And $env:BUILDKITE_SLACK_NOTIFY -eq "true")) {
@@ -74,7 +72,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     
     $json_message = [ordered]@{
         text = $(if ((Test-Path env:BUILDKITE_NIGHTLY_BUILD) -And $env:BUILDKITE_NIGHTLY_BUILD -eq "true") {":night_with_stars: Nightly build of GDK for Unreal"} `
-                else {"GDK for Unreal build by $env:BUILDKITE_BUILD_CREATOR"}) + $(if ($tests_passed) {" passed testing."} else {" passed failed testing."})
+                else {"GDK for Unreal build by $env:BUILDKITE_BUILD_CREATOR"}) + $(if ($tests_passed) {" passed testing."} else {" failed testing."})
         attachments= @(
                 @{
                     fallback = "Find the build at $build_url"
