@@ -29,6 +29,9 @@ $test_results_id = (Select-String -Pattern "[^ ]* testdir/test.txt" -Path "outpu
 $test_results_id
 
 
+"running script:"
+&$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
+
 
 . "$PSScriptRoot\common.ps1"
 

@@ -41,6 +41,9 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
 
+mkdir ci/TestResults
+"test" > ci/TestResults/test.txt
+
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
 # $upload_output = buildkite-agent "artifact" "upload" "testdir/test.txt" *>&1 | %{ "'" + $_ + "'" } | Out-String
 $upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *> "upload_output.txt"
