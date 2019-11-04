@@ -41,15 +41,11 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
 
-# Upload artifacts to Buildkite, merge all output streams to extract artifact ID in next step
+# Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
 $upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *>&1 | Out-String
 if (-Not $?) {
     throw "Failed to upload build artifacts."
 }
-
-# Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-$test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
-$test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
 
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
@@ -61,6 +57,11 @@ $tests_passed = $test_results_obj.failed -eq 0
 
 if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIFY) -And $env:BUILDKITE_SLACK_NOTIFY -eq "true")) {
     # Send a Slack notification with a link to the build.
+    
+    # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
+    $test_results_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+    $test_log_id = (Select-String -Pattern "[^ ]* ci\\TestResults\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+
     # Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
     $slack_webhook_secret = "$(imp-ci secrets read --environment=production --buildkite-org=improbable --secret-type=slack-webhook --secret-name=unreal-gdk-slack-web-hook)"
     $slack_webhook_url = $slack_webhook_secret | ConvertFrom-Json | %{$_.url}
@@ -70,7 +71,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     
     $json_message = [ordered]@{
         text = $(if ((Test-Path env:BUILDKITE_NIGHTLY_BUILD) -And $env:BUILDKITE_NIGHTLY_BUILD -eq "true") {":night_with_stars: Nightly build of GDK for Unreal"} `
-                else {"GDK for Unreal build by $env:BUILDKITE_BUILD_CREATOR"}) + $(if ($tests_passed) {" passed building and testing."} else {" passed building but failed testing."})
+                else {"GDK for Unreal build by $env:BUILDKITE_BUILD_CREATOR"}) + $(if ($tests_passed) {" passed testing."} else {" passed failed testing."})
         attachments= @(
                 @{
                     fallback = "Find the build at $build_url"
