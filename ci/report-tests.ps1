@@ -45,13 +45,13 @@ mkdir ci/TestResults
 "test" > ci/TestResults/test.txt
 
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
-$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *>&1 | %{ "'" + $_ + "'" } | Out-String
+$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *>&1 | %{ "$_" } | Out-String
 #$upload_output = buildkite-agent "artifact" "upload" "ci/TestResults/*" *> "upload_output.txt"
 $upload_output
 if (-Not $?) {
     throw "Failed to upload build artifacts."
 }
-
+<#
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
 $results_json = Get-Content $results_path -Raw
@@ -59,7 +59,7 @@ $results_json = Get-Content $results_path -Raw
 $test_results_obj = ConvertFrom-Json $results_json
 
 $tests_passed = $test_results_obj.failed -eq 0
-
+#>
 if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIFY) -And $env:BUILDKITE_SLACK_NOTIFY -eq "true")) {
     # Send a Slack notification with a link to the build.
     
