@@ -14,14 +14,16 @@ param(
 # Upload artifacts to Buildkite
 "a \b" | Out-File -FilePath "test.txt" 
 
-buildkite-agent "artifact" "upload" "test.txt" *> upload.txt
+$upload_output = buildkite-agent "artifact" "upload" "test.txt" *>&1
 
-"upload output:"
-Get-Content upload.txt
+"-------------- upload output:"
+$upload_output
+"--------------"
 
 # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-$test_results_id = (Select-String -Pattern "[^ ]* \\b" -Path upload.txt -CaseSensitive).Matches[0].Value.Split(" ")[0]
+$test_results_id = (Select-String -Pattern "[^ ]* test.txt" -Path upload.txt -CaseSensitive).Matches[0].Value.Split(" ")[0]
 
+"-- id: "
 $test_results_id
 
 
