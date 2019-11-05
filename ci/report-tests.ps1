@@ -69,6 +69,19 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true
         Throw $_
     }
 
+    # Build text for slack message
+    if ($env:BUILDKITE_NIGHTLY_BUILD -eq "true") {
+        $build_description = ":night_with_stars: Nightly build of *GDK for Unreal*"
+    } else {
+        $build_description = "*GDK for Unreal* build by $env:BUILDKITE_BUILD_CREATOR"
+    }
+    if ($tests_passed) {
+        $build_result = "passed testing"
+    } else {
+        $build_result = "failed testing"
+    }
+    $slack_text = $build_description + " " + $build_result + "."
+
     # Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
     $slack_webhook_secret = "$(imp-ci secrets read --environment=production --buildkite-org=improbable --secret-type=slack-webhook --secret-name=unreal-gdk-slack-web-hook)"
     $slack_webhook_url = $slack_webhook_secret | ConvertFrom-Json | %{$_.url}
@@ -77,8 +90,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true
     $build_url = "$env:BUILDKITE_BUILD_URL"
     
     $json_message = [ordered]@{
-        text = $(if ((Test-Path env:BUILDKITE_NIGHTLY_BUILD) -And $env:BUILDKITE_NIGHTLY_BUILD -eq "true") {":night_with_stars: Nightly build of *GDK for Unreal*"} `
-                else {"*GDK for Unreal* build by $env:BUILDKITE_BUILD_CREATOR"}) + $(if ($tests_passed) {" passed testing."} else {" failed testing."})
+        text = "$slack_text"
         attachments= @(
                 @{
                     fallback = "Find the build at $build_url"
