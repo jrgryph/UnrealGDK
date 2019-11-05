@@ -112,13 +112,13 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                             @{
                                 type = "button"
                                 text = ":bar_chart: Test results"
-                                url = "$env:BUILDKITE_BUILD_URL/jobs/$env:BUILDKITE_BUILD_ID/artifacts/$test_results_id"
+                                url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_BUILD_ID/artifacts/$test_results_id"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
                                 text = ":page_with_curl: Test log"
-                                url = "$env:BUILDKITE_BUILD_URL/jobs/$env:BUILDKITE_BUILD_ID/artifacts/$test_log_id"
+                                url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_BUILD_ID/artifacts/$test_log_id"
                                 style = "primary"
                             }
                         )

@@ -68,4 +68,5 @@ steps:
     async: true
     build:
       env:
+        BUILDKITE_NIGHTLY_BUILD="${BUILDKITE_NIGHTLY_BUILD:-false}"
         GDK_BRANCH="${BUILDKITE_BRANCH}"
