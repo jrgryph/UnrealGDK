@@ -2,6 +2,9 @@ param(
     [string] $test_result_dir
 )
 
+# Artifact path used by Buildkite (drop the initial C:\)
+$formatted_test_result_dir = (Split-Path -Path "$test_result_dir" -NoQualifier).Substring(1)
+
 if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     # The Unreal Engine produces a mostly undocumented index.html/index.json as the result of running a test suite, for now seems mostly
     # for internal use - but it's an okay visualisation for test results, so we fix it up here to display as a build artifact in CI
@@ -30,9 +33,9 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     }
 
     # %5C is the escape code for a backslash \, needed to successfully reach the artifact from the serving site
-    ((Get-Content -Path "$test_result_dir\index.html" -Raw) -Replace "index.json", "ci%5CTestResults%5Cindex.json") | Set-Content -Path "$test_result_dir\index.html"
+    ((Get-Content -Path "$test_result_dir\index.html" -Raw) -Replace "index.json", "$($formatted_test_result_dir.Replace("\","%5C"))%5Cindex.json") | Set-Content -Path "$test_result_dir\index.html"
 
-    echo "Test results in a nicer format can be found <a href='artifact://ci\TestResults\index.html'>here</a>.`n" | Out-File "$gdk_home/annotation.md"
+    echo "Test results in a nicer format can be found <a href='artifact://$formatted_test_result_dir\index.html'>here</a>.`n" | Out-File "$gdk_home/annotation.md"
 
     Get-Content "$gdk_home/annotation.md" | buildkite-agent annotate `
         --context "unreal-gdk-test-artifact-location"  `
@@ -57,8 +60,8 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     
     # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
     Try {
-        $test_results_id = (Select-String -Pattern "[^ ]* [^ ]*\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
-        $test_log_id = (Select-String -Pattern "[^ ]* [^ ]*\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+        $test_results_id = (Select-String -Pattern "[^ ]* $($formatted_test_result_dir.Replace("\","\\"))\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+        $test_log_id = (Select-String -Pattern "[^ ]* $($formatted_test_result_dir.Replace("\","\\"))\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
     }
     Catch {
         Write-Error "Failed to parse artifact ID from the buildkite uploading output: $upload_output"
@@ -111,13 +114,13 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                             }
                             @{
                                 type = "button"
-                                text = ":bar_chart: Test results"
+                                text = ":bar_chart: View test results"
                                 url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_results_id"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
-                                text = ":page_with_curl: Test log"
+                                text = ":page_with_curl: View test log"
                                 url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_log_id"
                                 style = "primary"
                             }
@@ -125,7 +128,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                 }
             )
         }
-
+    
     $json_request = $json_message | ConvertTo-Json -Depth 10
 
     Invoke-WebRequest -UseBasicParsing "$slack_webhook_url" -ContentType "application/json" -Method POST -Body "$json_request"
