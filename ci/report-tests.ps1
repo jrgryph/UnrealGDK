@@ -1,5 +1,6 @@
 param(
-    [string] $test_result_dir
+    [string] $test_result_dir,
+    [string] $test_repo_url
 )
 
 # Artifact path used by Buildkite (drop the initial C:\)
@@ -96,6 +97,11 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                             @{
                                 title = "Tests passed"
                                 value = "$($test_results_obj.succeeded) / $($test_results_obj.succeeded + $test_results_obj.failed)"
+                                short = "true"
+                            }
+                            @{
+                                title = "Test Repo URL"
+                                value = "$test_repo_url"
                                 short = "true"
                             }
                         )
