@@ -77,8 +77,8 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
     $build_url = "$env:BUILDKITE_BUILD_URL"
     
     $json_message = [ordered]@{
-        text = $(if ((Test-Path env:BUILDKITE_NIGHTLY_BUILD) -And $env:BUILDKITE_NIGHTLY_BUILD -eq "true") {":night_with_stars: Nightly build of GDK for Unreal"} `
-                else {"GDK for Unreal build by $env:BUILDKITE_BUILD_CREATOR"}) + $(if ($tests_passed) {" passed testing."} else {" failed testing."})
+        text = $(if ((Test-Path env:BUILDKITE_NIGHTLY_BUILD) -And $env:BUILDKITE_NIGHTLY_BUILD -eq "true") {":night_with_stars: Nightly build of *GDK for Unreal*"} `
+                else {"*GDK for Unreal* build by $env:BUILDKITE_BUILD_CREATOR"}) + $(if ($tests_passed) {" passed testing."} else {" failed testing."})
         attachments= @(
                 @{
                     fallback = "Find the build at $build_url"
