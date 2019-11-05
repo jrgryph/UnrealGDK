@@ -48,7 +48,7 @@ steps:
     <<: *common # This folds the YAML named anchor into this step. Overrides, if any, should follow, not precede.
     artifact_paths:
       - "../UnrealEngine/Engine/Programs/AutomationTool/Saved/Logs/*"
-      - "../TestProject/Saved/Logs/*"
+      - "../TestProject/Game/Saved/Logs/*"
 
   - label: "build-GDK-:linux:"
     command: "powershell ./ci/setup-build-test-gdk.ps1 -target_platform Linux"
