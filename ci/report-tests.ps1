@@ -108,25 +108,25 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                     actions = @(
                             @{
                                 type = "button"
-                                text = ":github: View GDK commit"
+                                text = ":github: GDK commit"
                                 url = "$gdk_commit_url"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
-                                text = ":buildkite: View build"
+                                text = ":buildkite: BK build"
                                 url = "$build_url"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
-                                text = ":bar_chart: View test results"
+                                text = ":bar_chart: Test results"
                                 url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_results_id"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
-                                text = ":page_with_curl: View test log"
+                                text = ":page_with_curl: Test log"
                                 url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_log_id"
                                 style = "primary"
                             }
