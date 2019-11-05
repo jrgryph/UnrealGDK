@@ -112,13 +112,13 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or ((Test-Path env:BUILDKITE_SLACK_NOTIF
                             @{
                                 type = "button"
                                 text = ":bar_chart: Test results"
-                                url = "$env:BUILDKITE_ARTIFACT_UPLOAD_DESTINATION/artifacts/$test_results_id"
+                                url = "$env:BUILDKITE_BUILD_URL/jobs/$env:BUILDKITE_BUILD_ID/artifacts/$test_results_id"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
                                 text = ":page_with_curl: Test log"
-                                url = "$env:BUILDKITE_ARTIFACT_UPLOAD_DESTINATION/artifacts/$test_log_id"
+                                url = "$env:BUILDKITE_BUILD_URL/jobs/$env:BUILDKITE_BUILD_ID/artifacts/$test_log_id"
                                 style = "primary"
                             }
                         )
