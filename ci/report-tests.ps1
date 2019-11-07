@@ -98,7 +98,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true
                     fields = @(
                             @{
                                 title = "Build Message"
-                                value = "$env:BUILDKITE_MESSAGE".Substring(0, 64)
+                                value = "$env:BUILDKITE_MESSAGE".Substring(0, [System.Math]::Min(64, "$env:BUILDKITE_MESSAGE".Length))
                                 short = "true"
                             }
                             @{
