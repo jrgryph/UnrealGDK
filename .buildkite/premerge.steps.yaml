@@ -43,3 +43,9 @@ steps:
     env:
         ENGINE_VERSION: "${ENGINE_VERSION}"
     <<: *script_runner
+
+  - wait # wait for all tesing to complete before uploading tests
+  
+  - label: "upload test metrics to GCS"
+    command: "ci/upload-test-metrics.sh"
+    <<: *script_runner
