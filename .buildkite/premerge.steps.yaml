@@ -44,7 +44,7 @@ steps:
         ENGINE_VERSION: "${ENGINE_VERSION}"
     <<: *script_runner
 
-  - wait # wait for all tesing to complete before uploading tests
+  - wait # wait for all tesing to complete before uploading test results
   
   - label: "upload test metrics to GCS"
     command: "ci/upload-test-metrics.sh"

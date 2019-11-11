@@ -37,4 +37,19 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Get-Content "$gdk_home/annotation.md" | buildkite-agent annotate `
         --context "unreal-gdk-test-artifact-location"  `
         --style info
+    
+    # TODO: Define and save the JSON to upload
+    <#
+    rows_to_insert = [
+        {
+            "time": datetime.datetime.now(),
+            "num_tests_run": args.num_tests_run,
+            "num_tests_passed": args.num_tests_passed,
+            "testing_duration-seconds": args.testing_duration_seconds,
+            "test_report_url": args.test_report_url,
+            "build_url": os.environ['BUILDKITE_BUILD_URL']
+        }
+    ]
+    buildkite-artifact upload
+    #>
 }
