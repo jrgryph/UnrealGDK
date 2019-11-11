@@ -70,17 +70,14 @@ $test_log_url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION
 
 # Define and upload test summary JSON artifact for longer-term test metric tracking (see upload-test-metrics.sh)
 $test_summary = [pscustomobject]@{
-    time: "$(Get-Date -Format u)",
-    num_tests_run: "$($test_results_obj.succeeded + $test_results_obj.failed)",
-    num_tests_passed: "$($test_results_obj.succeeded)",
-    testing_duration-seconds: "$($test_results_obj.totalDuration)",
-    test_results_url: "$test_results_url",
-    build_url: "$env:BUILDKITE_BUILD_URL"
+    time = "$(Get-Date -Format u)"
+    num_tests_run = $test_results_obj.succeeded + $test_results_obj.failed)
+    num_tests_passed = $test_results_obj.succeeded
+    testing_duration_seconds = $test_results_obj.totalDuration
+    test_results_url = "$test_results_url"
+    build_url = "$env:BUILDKITE_BUILD_URL"
 }
 $test_summary | ConvertTo-Json | Set-Content -Path "$test_result_dir\test_summary.json"
-
-with open('test_summary.json', 'w') as fp:
-    json.dumps(sample, fp)
 
 buildkite-agent "artifact" "upload" "$test_result_dir\test_summary.json"
 

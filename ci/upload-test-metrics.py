@@ -1,7 +1,6 @@
-import datetime
-import sys
-import os
+import glob
 import json
+import sys
 from google.cloud import bigquery
 
 # Define target upload location
@@ -14,13 +13,12 @@ client = bigquery.Client(project=PROJECT)
 table_ref = client.dataset(DATASET).table(TABLE)
 table = client.get_table(table_ref)
 
-echo("json files:")
-for json_file in os.listdir("ci/test_summaries"):
-    json_obj = json.loads(json_file)
-    print(json_obj)
-
 # Read rows from files that have been generated per Buildkite step
-rows_to_insert = [json.loads(summary_file) for summary_file in os.listdir("ci/test_summaries")]
+def parse_json(file_path):
+    with open(file_path) as json_file:
+        return json.load(json_file)
+
+rows_to_insert = [parse_json(summary_file) for summary_file in glob.glob("ci/test_summaries/*")]
 
 # Upload rows
 errors = client.insert_rows(table, rows_to_insert)
