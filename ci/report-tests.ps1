@@ -45,30 +45,31 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
 
-# Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
-$ErrorActionPreference = 'Continue' # For some reason every piece of output being piped is considered an error
-$upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } | Out-String
-$ErrorActionPreference = 'Stop' # Restore preference
-
 # Read the test results
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
 $results_json = Get-Content $results_path -Raw
 $test_results_obj = ConvertFrom-Json $results_json
 $tests_passed = $test_results_obj.failed -eq 0
 
-if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true") {
-    # Send a Slack notification with a link to the build.
-    
-    # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
-    Try {
-        $test_results_id = (Select-String -Pattern "[^ ]* $($formatted_test_result_dir.Replace("\","\\"))\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
-        $test_log_id = (Select-String -Pattern "[^ ]* $($formatted_test_result_dir.Replace("\","\\"))\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
-    }
-    Catch {
-        Write-Error "Failed to parse artifact ID from the buildkite uploading output: $upload_output"
-        Throw $_
-    }
+# Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
+$ErrorActionPreference = "Continue" # For some reason every piece of output being piped is considered an error
+$upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } | Out-String
+$ErrorActionPreference = "Stop" # Restore preference
 
+# Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
+Try {
+    $test_results_id = (Select-String -Pattern "[^ ]* $($formatted_test_result_dir.Replace("\","\\"))\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+    $test_log_id = (Select-String -Pattern "[^ ]* $($formatted_test_result_dir.Replace("\","\\"))\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+}
+Catch {
+    Write-Error "Failed to parse artifact ID from the buildkite uploading output: $upload_output"
+    Throw $_
+}
+$test_results_url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_results_id"
+$test_log_url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_log_id"
+
+# Send a Slack notification with a link to the build.
+if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true") {
     # Build text for slack message
     if ($env:BUILDKITE_NIGHTLY_BUILD -eq "true") {
         $build_description = ":night_with_stars: Nightly build of *GDK for Unreal*"
@@ -85,9 +86,6 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true
     # Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
     $slack_webhook_secret = "$(imp-ci secrets read --environment=production --buildkite-org=improbable --secret-type=slack-webhook --secret-name=unreal-gdk-slack-web-hook)"
     $slack_webhook_url = $slack_webhook_secret | ConvertFrom-Json | %{$_.url}
-
-    $gdk_commit_url = "https://github.com/spatialos/UnrealGDK/commit/$env:BUILDKITE_COMMIT"
-    $build_url = "$env:BUILDKITE_BUILD_URL"
     
     $json_message = [ordered]@{
         text = "$slack_text"
@@ -121,25 +119,25 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true
                             @{
                                 type = "button"
                                 text = ":github: GDK commit"
-                                url = "$gdk_commit_url"
+                                url = "https://github.com/spatialos/UnrealGDK/commit/$env:BUILDKITE_COMMIT"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
                                 text = ":buildkite: BK build"
-                                url = "$build_url"
+                                url = "$env:BUILDKITE_BUILD_URL"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
                                 text = ":bar_chart: Test results"
-                                url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_results_id"
+                                url = "$test_results_url"
                                 style = "primary"
                             }
                             @{
                                 type = "button"
                                 text = ":page_with_curl: Test log"
-                                url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_log_id"
+                                url = "$test_log_url"
                                 style = "primary"
                             }
                         )
