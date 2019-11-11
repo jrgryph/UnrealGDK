@@ -14,6 +14,11 @@ client = bigquery.Client(project=PROJECT)
 table_ref = client.dataset(DATASET).table(TABLE)
 table = client.get_table(table_ref)
 
+echo("json files:")
+for json_file in os.listdir("ci/test_summaries"):
+    json_obj = json.loads(json_file)
+    print(json_obj)
+
 # Read rows from files that have been generated per Buildkite step
 rows_to_insert = [json.loads(summary_file) for summary_file in os.listdir("ci/test_summaries")]
 
