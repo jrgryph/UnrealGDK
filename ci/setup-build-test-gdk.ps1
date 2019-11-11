@@ -11,6 +11,11 @@ param(
   [string] $test_repo_map = "EmptyGym"
 )
 
+# Allow overriding testing branch via environment variable
+if (Test-Path env:TEST_REPO_BRANCH) {
+  $test_repo_branch = $env:TEST_REPO_BRANCH
+}
+
 . "$PSScriptRoot\common.ps1"
 
 Start-Event "cleanup-symlinks" "command"
@@ -56,8 +61,9 @@ if ($target_platform -eq "Win64") {
     &$PSScriptRoot"\run-tests.ps1" `
       -unreal_editor_path "$unreal_path\Engine\Binaries\$target_platform\UE4Editor.exe" `
       -uproject_path "$build_home\TestProject\$test_repo_relative_uproject_path" `
-      -output_dir "$PSScriptRoot\TestResults" -log_file_path "$PSScriptRoot\TestResults\tests.log" `
-      -test_repo_map = "$test_repo_map"
+      -output_dir "$PSScriptRoot\TestResults" `
+      -log_file_path "$PSScriptRoot\TestResults\tests.log" `
+      -test_repo_map "$test_repo_map"
   }
   Catch {
     Throw $_
