@@ -1,6 +1,10 @@
 param(
-    [string] $test_result_dir
+    [string] $test_result_dir,
+    [string] $test_repo_url
 )
+
+# Artifact path used by Buildkite (drop the initial C:\)
+$formatted_test_result_dir = (Split-Path -Path "$test_result_dir" -NoQualifier).Substring(1)
 
 if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     # The Unreal Engine produces a mostly undocumented index.html/index.json as the result of running a test suite, for now seems mostly
@@ -30,26 +34,143 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     }
 
     # %5C is the escape code for a backslash \, needed to successfully reach the artifact from the serving site
-    ((Get-Content -Path "$test_result_dir\index.html" -Raw) -Replace "index.json", "ci%5CTestResults%5Cindex.json") | Set-Content -Path "$test_result_dir\index.html"
+    ((Get-Content -Path "$test_result_dir\index.html" -Raw) -Replace "index.json", "$($formatted_test_result_dir.Replace("\","%5C"))%5Cindex.json") | Set-Content -Path "$test_result_dir\index.html"
 
-    echo "Test results in a nicer format can be found <a href='artifact://ci\TestResults\index.html'>here</a>.`n" | Out-File "$gdk_home/annotation.md"
+    echo "Test results in a nicer format can be found <a href='artifact://$formatted_test_result_dir\index.html'>here</a>.`n" | Out-File "$gdk_home/annotation.md"
 
     Get-Content "$gdk_home/annotation.md" | buildkite-agent annotate `
         --context "unreal-gdk-test-artifact-location"  `
         --style info
     
-    # TODO: Define and save the JSON to upload
-    <#
-    rows_to_insert = [
-        {
-            "time": datetime.datetime.now(),
-            "num_tests_run": args.num_tests_run,
-            "num_tests_passed": args.num_tests_passed,
-            "testing_duration-seconds": args.testing_duration_seconds,
-            "test_report_url": args.test_report_url,
-            "build_url": os.environ['BUILDKITE_BUILD_URL']
-        }
-    ]
-    buildkite-artifact upload
-    #>
+    Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
+
+# Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
+$ErrorActionPreference = 'Continue' # For some reason every piece of output being piped is considered an error
+$upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } | Out-String
+$ErrorActionPreference = 'Stop' # Restore preference
+
+# Read the test results
+$results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
+$results_json = Get-Content $results_path -Raw
+$test_results_obj = ConvertFrom-Json $results_json
+$tests_passed = $test_results_obj.failed -eq 0
+
+# TODO: Define and upload test summary JSON artifact for longer-term test metric tracking (see upload-test-metrics.sh)
+<#
+rows_to_insert = [
+    {
+        "time": datetime.datetime.now(),
+        "num_tests_run": args.num_tests_run,
+        "num_tests_passed": args.num_tests_passed,
+        "testing_duration-seconds": args.testing_duration_seconds,
+        "test_report_url": args.test_report_url,
+        "build_url": os.environ['BUILDKITE_BUILD_URL']
+    }
+]
+buildkite-artifact upload
+#>
+
+if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true") {
+    # Send a Slack notification with a link to the build.
+    
+    # Artifacts are assigned an ID upon upload, so grab IDs from upload process output to build the artifact URLs
+    Try {
+        $test_results_id = (Select-String -Pattern "[^ ]* $($formatted_test_result_dir.Replace("\","\\"))\\index.html" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+        $test_log_id = (Select-String -Pattern "[^ ]* $($formatted_test_result_dir.Replace("\","\\"))\\tests.log" -InputObject $upload_output -CaseSensitive).Matches[0].Value.Split(" ")[0]
+    }
+    Catch {
+        Write-Error "Failed to parse artifact ID from the buildkite uploading output: $upload_output"
+        Throw $_
+    }
+
+    # Build text for slack message
+    if ($env:BUILDKITE_NIGHTLY_BUILD -eq "true") {
+        $build_description = ":night_with_stars: Nightly build of *GDK for Unreal*"
+    } else {
+        $build_description = "*GDK for Unreal* build by $env:BUILDKITE_BUILD_CREATOR"
+    }
+    if ($tests_passed) {
+        $build_result = "passed testing"
+    } else {
+        $build_result = "failed testing"
+    }
+    $slack_text = $build_description + " " + $build_result + "."
+
+    # Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
+    $slack_webhook_secret = "$(imp-ci secrets read --environment=production --buildkite-org=improbable --secret-type=slack-webhook --secret-name=unreal-gdk-slack-web-hook)"
+    $slack_webhook_url = $slack_webhook_secret | ConvertFrom-Json | %{$_.url}
+
+    $gdk_commit_url = "https://github.com/spatialos/UnrealGDK/commit/$env:BUILDKITE_COMMIT"
+    $build_url = "$env:BUILDKITE_BUILD_URL"
+    
+    $json_message = [ordered]@{
+        text = "$slack_text"
+        attachments= @(
+                @{
+                    fallback = "Find the build at $build_url"
+                    color = $(if ($tests_passed) {"good"} else {"danger"})
+                    fields = @(
+                            @{
+                                title = "Build Message"
+                                value = "$env:BUILDKITE_MESSAGE".Substring(0, [System.Math]::Min(64, "$env:BUILDKITE_MESSAGE".Length))
+                                short = "true"
+                            }
+                            @{
+                                title = "GDK branch"
+                                value = "$env:BUILDKITE_BRANCH"
+                                short = "true"
+                            }
+                            @{
+                                title = "Tests passed"
+                                value = "$($test_results_obj.succeeded) / $($test_results_obj.succeeded + $test_results_obj.failed)"
+                                short = "true"
+                            }
+                            @{
+                                title = "Test Repo URL"
+                                value = "$test_repo_url"
+                                short = "true"
+                            }
+                        )
+                    actions = @(
+                            @{
+                                type = "button"
+                                text = ":github: GDK commit"
+                                url = "$gdk_commit_url"
+                                style = "primary"
+                            }
+                            @{
+                                type = "button"
+                                text = ":buildkite: BK build"
+                                url = "$build_url"
+                                style = "primary"
+                            }
+                            @{
+                                type = "button"
+                                text = ":bar_chart: Test results"
+                                url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_results_id"
+                                style = "primary"
+                            }
+                            @{
+                                type = "button"
+                                text = ":page_with_curl: Test log"
+                                url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_log_id"
+                                style = "primary"
+                            }
+                        )
+                }
+            )
+        }
+    
+    $json_request = $json_message | ConvertTo-Json -Depth 10
+
+    Invoke-WebRequest -UseBasicParsing "$slack_webhook_url" -ContentType "application/json" -Method POST -Body "$json_request"
+}
+
+# Fail this build if any tests failed
+if (-Not $tests_passed) {
+    $fail_msg = "$($test_results_obj.failed) tests failed. Logs for these tests are contained in the tests.log artifact."
+    Write-Log $fail_msg
+    Throw $fail_msg
+}
+Write-Log "All tests passed!"
