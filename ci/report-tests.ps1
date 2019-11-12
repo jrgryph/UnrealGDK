@@ -51,6 +51,14 @@ $results_json = Get-Content $results_path -Raw
 $test_results_obj = ConvertFrom-Json $results_json
 $tests_passed = $test_results_obj.failed -eq 0
 
+# Coun the number of SpatialGDK tests
+$num_gdk_tests = 0
+Foreach ($test in $test_results_obj.tests) {
+	if ($test.fulltestPath.Contains("SpatialGDK.")) {
+		$num_gdk_tests += 1
+	}
+}
+
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
 $ErrorActionPreference = "Continue" # For some reason every piece of output being piped is considered an error
 $upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } | Out-String
@@ -105,13 +113,13 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true
                                 short = "true"
                             }
                             @{
-                                title = "Tests passed"
+                                title = "Total tests passed"
                                 value = "$($test_results_obj.succeeded) / $($test_results_obj.succeeded + $test_results_obj.failed)"
                                 short = "true"
                             }
                             @{
-                                title = "Test Repo URL"
-                                value = "$test_repo_url"
+                                title = "Number of GDK tests"
+                                value = "$num_gdk_tests"
                                 short = "true"
                             }
                         )
