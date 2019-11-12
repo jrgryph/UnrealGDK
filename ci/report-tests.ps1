@@ -45,7 +45,7 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
 
-# Read the test results
+## Read the test results, and pass/fail the build accordingly 
 $results_path = Join-Path -Path $test_result_dir -ChildPath "index.json"
 $results_json = Get-Content $results_path -Raw
 $test_results_obj = ConvertFrom-Json $results_json
