@@ -51,7 +51,7 @@ $results_json = Get-Content $results_path -Raw
 $test_results_obj = ConvertFrom-Json $results_json
 $tests_passed = $test_results_obj.failed -eq 0
 
-# Coun the number of SpatialGDK tests
+# Count the number of SpatialGDK tests
 $num_gdk_tests = 0
 Foreach ($test in $test_results_obj.tests) {
 	if ($test.fulltestPath.Contains("SpatialGDK.")) {
