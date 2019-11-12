@@ -1,6 +1,6 @@
 param(
     [string] $test_result_dir,
-    [string] $test_repo_url
+    [string] $test_repo_branch
 )
 
 # Artifact path used by Buildkite (drop the initial C:\)
@@ -41,8 +41,6 @@ if (Test-Path "$test_result_dir\index.html" -PathType Leaf) {
     Get-Content "$gdk_home/annotation.md" | buildkite-agent annotate `
         --context "unreal-gdk-test-artifact-location"  `
         --style info
-    
-    Write-Log "Test results are displayed in a nicer form in the artifacts (index.html / index.json)"
 }
 
 ## Read the test results, and pass/fail the build accordingly 
@@ -103,7 +101,7 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true
                     color = $(if ($tests_passed) {"good"} else {"danger"})
                     fields = @(
                             @{
-                                title = "Build Message"
+                                title = "Build message"
                                 value = "$env:BUILDKITE_MESSAGE".Substring(0, [System.Math]::Min(64, "$env:BUILDKITE_MESSAGE".Length))
                                 short = "true"
                             }
@@ -118,8 +116,8 @@ if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true
                                 short = "true"
                             }
                             @{
-                                title = "Number of GDK tests"
-                                value = "$num_gdk_tests"
+                                title = "Test project branch"
+                                value = "$test_repo_branch"
                                 short = "true"
                             }
                         )
