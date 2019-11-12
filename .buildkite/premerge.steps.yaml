@@ -44,3 +44,9 @@ steps:
     env:
         ENGINE_VERSION: "${ENGINE_VERSION}"
     <<: *script_runner
+
+  - wait: ~
+    continue_on_failure: true
+    
+  - label: "slack-notify"
+    commands: "powershell ./ci/build-and-send-slack-notification.ps1"
