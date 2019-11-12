@@ -49,6 +49,7 @@ $results_json = Get-Content $results_path -Raw
 $test_results_obj = ConvertFrom-Json $results_json
 $tests_passed = $test_results_obj.failed -eq 0
 
+# TODO: this counting is not used anywhere, is it also in UNR-2302?
 # Count the number of SpatialGDK tests
 $num_gdk_tests = 0
 Foreach ($test in $test_results_obj.tests) {
@@ -74,87 +75,81 @@ Catch {
 $test_results_url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_results_id"
 $test_log_url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_log_id"
 
-# Send a Slack notification with a link to the build.
-if ($env:BUILDKITE_BRANCH -eq "master" -Or $env:BUILDKITE_SLACK_NOTIFY -eq "true") {
-    # Build text for slack message
-    if ($env:BUILDKITE_NIGHTLY_BUILD -eq "true") {
-        $build_description = ":night_with_stars: Nightly build of *GDK for Unreal*"
-    } else {
-        $build_description = "*GDK for Unreal* build by $env:BUILDKITE_BUILD_CREATOR"
-    }
-    if ($tests_passed) {
-        $build_result = "passed testing"
-    } else {
-        $build_result = "failed testing"
-    }
-    $slack_text = $build_description + " " + $build_result + "."
-
-    # Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
-    $slack_webhook_secret = "$(imp-ci secrets read --environment=production --buildkite-org=improbable --secret-type=slack-webhook --secret-name=unreal-gdk-slack-web-hook)"
-    $slack_webhook_url = $slack_webhook_secret | ConvertFrom-Json | %{$_.url}
-    
-    $json_message = [ordered]@{
-        text = "$slack_text"
-        attachments= @(
-                @{
-                    fallback = "Find the build at $build_url"
-                    color = $(if ($tests_passed) {"good"} else {"danger"})
-                    fields = @(
-                            @{
-                                title = "Build message"
-                                value = "$env:BUILDKITE_MESSAGE".Substring(0, [System.Math]::Min(64, "$env:BUILDKITE_MESSAGE".Length))
-                                short = "true"
-                            }
-                            @{
-                                title = "GDK branch"
-                                value = "$env:BUILDKITE_BRANCH"
-                                short = "true"
-                            }
-                            @{
-                                title = "Total tests passed"
-                                value = "$($test_results_obj.succeeded) / $($test_results_obj.succeeded + $test_results_obj.failed)"
-                                short = "true"
-                            }
-                            @{
-                                title = "Test project branch"
-                                value = "$test_repo_branch"
-                                short = "true"
-                            }
-                        )
-                    actions = @(
-                            @{
-                                type = "button"
-                                text = ":github: GDK commit"
-                                url = "https://github.com/spatialos/UnrealGDK/commit/$env:BUILDKITE_COMMIT"
-                                style = "primary"
-                            }
-                            @{
-                                type = "button"
-                                text = ":buildkite: BK build"
-                                url = "$env:BUILDKITE_BUILD_URL"
-                                style = "primary"
-                            }
-                            @{
-                                type = "button"
-                                text = ":bar_chart: Test results"
-                                url = "$test_results_url"
-                                style = "primary"
-                            }
-                            @{
-                                type = "button"
-                                text = ":page_with_curl: Test log"
-                                url = "$test_log_url"
-                                style = "primary"
-                            }
-                        )
-                }
-            )
-        }
-    
-    $json_request = $json_message | ConvertTo-Json -Depth 10
-
-    Invoke-WebRequest -UseBasicParsing "$slack_webhook_url" -ContentType "application/json" -Method POST -Body "$json_request"
+# TODO: fix the attachment
+# Build text for slack message
+if ($env:BUILDKITE_NIGHTLY_BUILD -eq "true") {
+    $build_description = ":night_with_stars: Nightly build of *GDK for Unreal*"
+} else {
+    $build_description = "*GDK for Unreal* build by $env:BUILDKITE_BUILD_CREATOR"
 }
+if ($tests_passed) {
+    $build_result = "passed testing"
+} else {
+    $build_result = "failed testing"
+}
+$slack_text = $build_description + " " + $build_result + "."
+
+# Read Slack webhook secret from the vault and extract the Slack webhook URL from it.
+$slack_webhook_secret = "$(imp-ci secrets read --environment=production --buildkite-org=improbable --secret-type=slack-webhook --secret-name=unreal-gdk-slack-web-hook)"
+$slack_webhook_url = $slack_webhook_secret | ConvertFrom-Json | %{$_.url}
+
+$slack_attachment = [ordered]@{
+    fallback = "Find the build at $build_url"
+    color = $(if ($tests_passed) {"good"} else {"danger"})
+    fields = @(
+            @{
+                title = "Build message"
+                value = "$env:BUILDKITE_MESSAGE".Substring(0, [System.Math]::Min(64, "$env:BUILDKITE_MESSAGE".Length))
+                short = "true"
+            }
+            @{
+                title = "GDK branch"
+                value = "$env:BUILDKITE_BRANCH"
+                short = "true"
+            }
+            @{
+                title = "Total tests passed"
+                value = "$($test_results_obj.succeeded) / $($test_results_obj.succeeded + $test_results_obj.failed)"
+                short = "true"
+            }
+            @{
+                title = "Test project branch"
+                value = "$test_repo_branch"
+                short = "true"
+            }
+        )
+    actions = @(
+            @{
+                type = "button"
+                text = ":github: GDK commit"
+                url = "https://github.com/spatialos/UnrealGDK/commit/$env:BUILDKITE_COMMIT"
+                style = "primary"
+            }
+            @{
+                type = "button"
+                text = ":buildkite: BK build"
+                url = "$env:BUILDKITE_BUILD_URL"
+                style = "primary"
+            }
+            @{
+                type = "button"
+                text = ":bar_chart: Test results"
+                url = "$test_results_url"
+                style = "primary"
+            }
+            @{
+                type = "button"
+                text = ":page_with_curl: Test log"
+                url = "$test_log_url"
+                style = "primary"
+            }
+        )
+}
+
+# TODO: fix below SOMETHINGUNIQUE
+$slack_attachment | ConvertTo-Json | Set-Content -Path "$test_result_dir\slack_attachment_SOMETHINGUNIQUE.json"
+
+buildkite-agent "artifact" "upload" "$test_result_dir\slack_attachment_SOMETHINGUNIQUE.json"
 
 # Fail this build if any tests failed
 if (-Not $tests_passed) {
