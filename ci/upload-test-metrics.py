@@ -5,8 +5,8 @@ from google.cloud import bigquery
 
 # Define target upload location
 PROJECT = "venator-unsepulcher-3029873"
-DATASET = "benchmarks"
-TABLE = "records"
+DATASET = "UnrealGDK"
+TABLE = "ci_metrics"
 
 # Initialize bigquery client
 client = bigquery.Client(project=PROJECT)

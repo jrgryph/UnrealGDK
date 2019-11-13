@@ -50,15 +50,6 @@ $results_json = Get-Content $results_path -Raw
 $test_results_obj = ConvertFrom-Json $results_json
 $tests_passed = $test_results_obj.failed -eq 0
 
-# TODO: this counting is not used anywhere, is it also in UNR-2302?
-# Count the number of SpatialGDK tests
-$num_gdk_tests = 0
-Foreach ($test in $test_results_obj.tests) {
-	if ($test.fulltestPath.Contains("SpatialGDK.")) {
-		$num_gdk_tests += 1
-	}
-}
-
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
 $ErrorActionPreference = "Continue" # For some reason every piece of output being piped is considered an error
 $upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } | Out-String
@@ -76,7 +67,7 @@ Catch {
 $test_results_url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_results_id"
 $test_log_url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION_SLUG/pipelines/$env:BUILDKITE_PIPELINE_SLUG/builds/$env:BUILDKITE_BUILD_ID/jobs/$env:BUILDKITE_JOB_ID/artifacts/$test_log_id"
 
-# Build Slack attachment
+# Build and upload Slack attachment
 $slack_attachment = [ordered]@{
     fallback = "Find the test results at $test_results_url"
     color = $(if ($tests_passed) {"good"} else {"danger"})
@@ -100,6 +91,28 @@ $slack_attachment = [ordered]@{
 $slack_attachment | ConvertTo-Json | Set-Content -Path "$test_result_dir\slack_attachment_$env:BUILDKITE_STEP_ID.json"
 
 buildkite-agent "artifact" "upload" "$test_result_dir\slack_attachment_$env:BUILDKITE_STEP_ID.json"
+
+# Count the number of SpatialGDK tests in order to report this
+$num_gdk_tests = 0
+Foreach ($test in $test_results_obj.tests) {
+	if ($test.fulltestPath.Contains("SpatialGDK.")) {
+		$num_gdk_tests += 1
+	}
+}
+
+# Define and upload test summary JSON artifact for longer-term test metric tracking (see upload-test-metrics.sh)
+$test_summary = [pscustomobject]@{
+    time = Get-Date -UFormat %s
+    build_url = "$env:BUILDKITE_BUILD_URL"
+    platform = "$env:target_platform"
+    passed_all_tests = $tests_passed
+    tests_duration_seconds = $test_results_obj.totalDuration
+    num_tests = $test_results_obj.succeeded + $test_results_obj.failed
+    num_gdk_tests = $num_gdk_tests
+}
+$test_summary | ConvertTo-Json | Set-Content -Path "$test_result_dir\test_summary.json"
+
+buildkite-agent "artifact" "upload" "$test_result_dir\test_summary.json"
 
 # Fail this build if any tests failed
 if (-Not $tests_passed) {
