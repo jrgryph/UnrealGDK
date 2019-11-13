@@ -25,6 +25,6 @@ errors = client.insert_rows(table, rows_to_insert)
 
 # Handle errors
 for error in errors:
-    sys.stderr.write(f"Error inserting row at index %s: %s" % (error['index'], error['errors'])
+    sys.stderr.write("Error inserting row at index {0}: {1}".format(error['index'], error['errors']))
 
 assert errors == []
