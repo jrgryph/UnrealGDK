@@ -6,8 +6,13 @@ New-Item -ItemType Directory -Path "$PSScriptRoot/slack_attachments"
 
 $attachments = @()
 $all_steps_passed = $true
-foreach ($attachment_file in Get-ChildItem -Path "$PSScriptRoot/slack_attachments") {
-    $attachment = Get-Content -Path "$($attachment_file.FullName)" | Out-String | ConvertFrom-Json
+Get-ChildItem "$PSScriptRoot/slack_attachments" | Foreach-Object {
+    
+    Echo (Get-Content -Path $_.FullName)
+    Echo (Get-Content -Path $_.FullName | Out-String)
+    Echo (Get-Content -Path $_.FullName | Out-String | ConvertFrom-Json)
+    
+    $attachment = Get-Content -Path $_.FullName | Out-String | ConvertFrom-Json
     if ($attachment.color -eq "danger") {
         all_steps_passed = $false
     }
