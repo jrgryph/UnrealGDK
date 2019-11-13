@@ -7,7 +7,7 @@ New-Item -ItemType Directory -Path "./slack_attachments"
 $attachments = @()
 $all_steps_passed = $true
 foreach ($attachment_file in Get-ChildItem "./slack_attachments") {
-    $attachment = Get-Content "$attachment_file" | Out-String | ConvertFrom-Json
+    $attachment = Get-Content -Path "$attachment_file" | Out-String | ConvertFrom-Json
     if ($attachment.color -eq "danger") {
         all_steps_passed = $false
     }
