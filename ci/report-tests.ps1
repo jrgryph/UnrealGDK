@@ -48,15 +48,6 @@ $results_json = Get-Content $results_path -Raw
 $test_results_obj = ConvertFrom-Json $results_json
 $tests_passed = $test_results_obj.failed -eq 0
 
-# TODO: this counting is not used anywhere, is it also in UNR-2302?
-# Count the number of SpatialGDK tests
-$num_gdk_tests = 0
-Foreach ($test in $test_results_obj.tests) {
-	if ($test.fulltestPath.Contains("SpatialGDK.")) {
-		$num_gdk_tests += 1
-	}
-}
-
 # Upload artifacts to Buildkite, merge all output streams to extract artifact ID in the Slack message generation
 $ErrorActionPreference = "Continue" # For some reason every piece of output being piped is considered an error
 $upload_output = buildkite-agent "artifact" "upload" "$test_result_dir\*" *>&1 | %{ "$_" } | Out-String
