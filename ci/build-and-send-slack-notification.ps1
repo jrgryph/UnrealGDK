@@ -6,7 +6,7 @@ New-Item -ItemType Directory -Path "$PSScriptRoot/slack_attachments"
 
 $attachments = @()
 $all_steps_passed = $true
-Get-ChildItem "$PSScriptRoot/slack_attachments" | Foreach-Object {
+Get-ChildItem -Recurse "$PSScriptRoot/slack_attachments" -Filter *.json | Foreach-Object {
     
     Echo (Get-Content -Path $_.FullName)
     Echo (Get-Content -Path $_.FullName | Out-String)
