@@ -1,12 +1,12 @@
 # Send a Slack notification with a link to the build.
 
 # Download previously uploaded slack attachments that were generated for each testing step
-New-Item -ItemType Directory -Path "./slack_attachments"
-& buildkite-agent artifact download "*slack_attachment_*.json" "./slack_attachments"
+New-Item -ItemType Directory -Path "$PSScriptRoot/slack_attachments"
+& buildkite-agent artifact download "*slack_attachment_*.json" "$PSScriptRoot/slack_attachments"
 
 $attachments = @()
 $all_steps_passed = $true
-foreach ($attachment_file in Get-ChildItem -Path "./slack_attachments") {
+foreach ($attachment_file in Get-ChildItem -Path "$PSScriptRoot/slack_attachments") {
     $attachment = Get-Content -Path "$($attachment_file.FullName)" | Out-String | ConvertFrom-Json
     if ($attachment.color -eq "danger") {
         all_steps_passed = $false
