@@ -67,7 +67,7 @@ $json_message = [ordered]@{
         )
     }
 
-# Add attachments from other steps
+# Add attachments from other build steps
 foreach ($attachment in $attachments) {
     $json_message.attachments += $attachment
 } 
