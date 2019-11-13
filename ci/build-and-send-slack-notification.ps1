@@ -2,7 +2,7 @@
 
 # Download previously uploaded slack attachments that were generated for each testing step
 New-Item -ItemType Directory -Path "./slack_attachments"
-& buildkite-agent artifact download "slack_attachment_*.json" "./slack_attachments"
+& buildkite-agent artifact download "*slack_attachment_*.json" "./slack_attachments"
 
 $attachments = @()
 $all_steps_passed = $true
