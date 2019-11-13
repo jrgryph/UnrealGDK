@@ -110,9 +110,9 @@ $test_summary = [pscustomobject]@{
     num_tests = $test_results_obj.succeeded + $test_results_obj.failed
     num_gdk_tests = $num_gdk_tests
 }
-$test_summary | ConvertTo-Json | Set-Content -Path "$test_result_dir\test_summary.json"
+$test_summary | ConvertTo-Json | Set-Content -Path "$test_result_dir\test_summary_$env:BUILDKITE_STEP_ID.json"
 
-buildkite-agent "artifact" "upload" "$test_result_dir\test_summary.json"
+buildkite-agent "artifact" "upload" "$test_result_dir\test_summary_$env:BUILDKITE_STEP_ID.json"
 
 # Fail this build if any tests failed
 if (-Not $tests_passed) {
