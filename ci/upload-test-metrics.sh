@@ -10,7 +10,7 @@ imp-ci secrets read --environment=production --buildkite-org=improbable \
 
 # Fetch the test summary artifacts uploaded earlier
 mkdir "ci/test_summaries"
-buildkite-agent artifact download "*test_summary.json" "ci/test_summaries"
+buildkite-agent artifact download "*test_summary*.json" "ci/test_summaries"
 
 # Upload test summaries to GCS
 python "ci/upload-test-metrics.py"
