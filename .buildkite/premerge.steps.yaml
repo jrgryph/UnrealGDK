@@ -65,7 +65,7 @@ steps:
   - wait: ~
     continue_on_failure: true
 
-  - label: "upload test metrics to GCS"
+  - label: "upload-test-metrics"
     command: "ci/upload-test-metrics.sh"
     <<: *script_runner
 
