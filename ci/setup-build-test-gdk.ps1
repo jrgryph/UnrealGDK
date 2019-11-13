@@ -16,6 +16,39 @@ if (Test-Path env:TEST_REPO_BRANCH) {
   $test_repo_branch = $env:TEST_REPO_BRANCH
 }
 
+## START DEBUGGING
+
+# Build Slack attachment
+$slack_attachment = [ordered]@{
+    fallback = "Test message"
+    color ="good"
+    text = "This is text detailing the rest of the message"
+    actions = @(
+            @{
+                type = "button"
+                text = ":bar_chart: Test results"
+                url = "why_are_you_looking_at_this_broken_link"
+                style = "primary"
+            }
+            @{
+                type = "button"
+                text = ":page_with_curl: Test log"
+                url = "why_are_you_looking_at_this_broken_link"
+                style = "primary"
+            }
+        )
+}
+
+$slack_attachment | ConvertTo-Json | Set-Content -Path ".\slack_attachment_$env:BUILDKITE_STEP_ID.json"
+$slack_attachment | ConvertTo-Json | Set-Content -Path ".\slack_attachment_$env:BUILDKITE_STEP_ID-2.json"
+
+buildkite-agent "artifact" "upload" ".\slack_attachment_$env:BUILDKITE_STEP_ID.json"
+buildkite-agent "artifact" "upload" ".\slack_attachment_$env:BUILDKITE_STEP_ID-2.json"
+
+&$PSScriptRoot"\build-and-send-slack-notification.ps1"
+
+## END DEBUGGING
+
 . "$PSScriptRoot\common.ps1"
 
 Start-Event "cleanup-symlinks" "command"
