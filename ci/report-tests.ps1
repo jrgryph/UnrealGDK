@@ -1,6 +1,5 @@
 param(
-    [string] $test_result_dir,
-    [string] $test_repo_branch
+    [string] $test_result_dir
 )
 
 # Artifact path used by Buildkite (drop the initial C:\)

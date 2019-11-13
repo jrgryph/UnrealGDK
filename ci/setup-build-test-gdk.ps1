@@ -70,7 +70,7 @@ if ($target_platform -eq "Win64") {
     Finish-Event "test-gdk" "command"
 
     Start-Event "report-tests" "command"
-    &$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults" -test_repo_branch "$test_repo_branch"
+    &$PSScriptRoot"\report-tests.ps1" -test_result_dir "$PSScriptRoot\TestResults"
     Finish-Event "report-tests" "command"
   }
 }
