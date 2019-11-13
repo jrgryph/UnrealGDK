@@ -77,9 +77,9 @@ $test_log_url = "https://buildkite.com/organizations/$env:BUILDKITE_ORGANIZATION
 
 # Build Slack attachment
 $slack_attachment = [ordered]@{
-    fallback = "Find the build at $build_url"
+    fallback = "Find the test results at $test_results_url"
     color = $(if ($tests_passed) {"good"} else {"danger"})
-    text = "*$env:BUILDKITE_LABEL* - Passed $($test_results_obj.succeeded) / $($test_results_obj.succeeded + $test_results_obj.failed) tests."
+    text = "*$env:ENGINE_VERSION* - Passed $($test_results_obj.succeeded) / $($test_results_obj.succeeded + $test_results_obj.failed) tests."
     actions = @(
             @{
                 type = "button"
