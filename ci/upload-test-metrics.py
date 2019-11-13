@@ -24,10 +24,7 @@ rows_to_insert = [parse_json(summary_file) for summary_file in glob.glob("ci/tes
 errors = client.insert_rows(table, rows_to_insert)
 
 # Handle errors
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-
 for error in errors:
-    eprint(f"Error inserting row at index {error['index']}: {error['errors']}")
+    sys.stderr.write(f"Error inserting row at index %s: %s" % (error['index'], error['errors'])
 
 assert errors == []
