@@ -1,11 +1,14 @@
 #!/bin/bash
-set -euo pipefail
+#set -euo pipefail
 
 # Fetch the test summary artifacts uploaded earlier
 mkdir "./test_summaries"
 buildkite-agent artifact download "*test_summary*.json" "./test_summaries"
 
 export GOOGLE_APPLICATION_CREDENTIALS="$(mktemp)"
+
+ls /usr/local/bin
+ls /usr/bin
 
 # Fetch Google credentials so that our python script can upload the metrics to the GCS bucket.
 imp-ci secrets read --environment=production --buildkite-org=improbable \
