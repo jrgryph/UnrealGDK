@@ -30,6 +30,7 @@
 #include "Interop/SpatialReceiver.h"
 #include "Interop/SpatialSender.h"
 #include "LoadBalancing/AbstractLBStrategy.h"
+#include "LoadBalancing/GridBasedLBStrategy.h"
 #include "Schema/AlwaysRelevant.h"
 #include "SpatialConstants.h"
 #include "SpatialGDKSettings.h"
@@ -404,7 +405,8 @@ void USpatialNetDriver::CreateAndInitializeCoreClasses()
 		LoadBalanceEnforcer->Init(Connection->GetWorkerId(), StaticComponentView, Sender, VirtualWorkerTranslator.Get());
 
 		// TODO: zoning - Move to AWorldSettings subclass [UNR-2386]
-		LoadBalanceStrategy = NewObject<UAbstractLBStrategy>(this, SpatialSettings->LoadBalanceStrategy);
+		//LoadBalanceStrategy = NewObject<UAbstractLBStrategy>(this, SpatialSettings->LoadBalanceStrategy);
+		LoadBalanceStrategy = NewObject<UAbstractLBStrategy>(this, UGridBasedLBStrategy::StaticClass());
 		LoadBalanceStrategy->Init(this);
 
 		VirtualWorkerTranslator->SetDesiredVirtualWorkerCount(LoadBalanceStrategy->GetVirtualWorkerIds().Num());
@@ -1458,6 +1460,20 @@ void USpatialNetDriver::ProcessRemoteFunction(
 	FFrame* Stack,
 	UObject* SubObject)
 {
+	// TODO(Alex): remove test code below
+	if (LoadBalanceEnforcer)
+	{
+		{
+			LoadBalanceEnforcer->LockedActors.LockActor(Actor);
+			check(!LoadBalanceEnforcer->LockedActors.IsActorLocked(Actor));
+
+			ScopedLockHandle Lock = LoadBalanceEnforcer->LockedActors.LockActor(Actor);
+			check(LoadBalanceEnforcer->LockedActors.IsActorLocked(Actor));
+		}
+
+		check(!LoadBalanceEnforcer->LockedActors.IsActorLocked(Actor));
+	}
+	// ===
 	if (Connection == nullptr)
 	{
 		UE_LOG(LogSpatialOSNetDriver, Error, TEXT("Attempted to call ProcessRemoteFunction before connection was established"));

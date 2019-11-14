@@ -15,6 +15,69 @@ class SpatialVirtualWorkerTranslator;
 class USpatialSender;
 class USpatialStaticComponentView;
 
+#pragma optimize("", off)
+
+//struct LockedActors
+//{
+//public:
+//	bool IsActorLocked(const AActor* Actor)
+//	{
+//		return (LockedActors.Contains(Actor));
+//	}
+//
+//	void LockActor(const AActor* Actor)
+//	{
+//		LockedActors.Add(Actor);
+//	}
+//
+//	void UnlockActor(const AActor* Actor)
+//	{
+//		LockedActors.Remove(Actor);
+//	}
+//
+//private:
+//	TSet<const AActor*> LockedActors;
+//};
+//
+
+using ScopedLockHandle = TSharedPtr<uint8_t>;
+
+struct LockedActorsContainer
+{
+public:
+	bool IsActorLocked(const AActor* Actor)
+	{
+		if (ScopedLockHandle* LockedActor = LockedActors.Find(Actor))
+		{
+			check(LockedActor->IsValid());
+
+			if (LockedActor->GetSharedReferenceCount() == 1)
+			{
+				LockedActors.Remove(Actor);
+				return false;
+			}
+			else
+			{
+				return true;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	ScopedLockHandle LockActor(const AActor* Actor)
+	{
+		ScopedLockHandle& LockedActor = LockedActors.FindOrAdd(Actor);
+		LockedActor = MakeShared<unsigned char>(0);
+		return LockedActor;
+	}
+
+private:
+	TMap<const AActor*, ScopedLockHandle> LockedActors;
+};
+
 UCLASS()
 class USpatialLoadBalanceEnforcer : public UObject
 {
@@ -30,6 +93,7 @@ public:
 
 	void OnAuthorityIntentComponentUpdated(const Worker_ComponentUpdateOp& Op);
 
+	LockedActorsContainer LockedActors;
 private:
 
 	FString WorkerId;
@@ -51,3 +115,5 @@ private:
 
 	void ProcessQueuedAclAssignmentRequests();
 };
+
+#pragma optimize("", on)
