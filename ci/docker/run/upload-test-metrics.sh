@@ -13,4 +13,4 @@ imp-ci secrets read --environment=production --buildkite-org=improbable \
     --write-to=$GOOGLE_APPLICATION_CREDENTIALS
 
 # Upload test summaries to GCS
-python "ci/upload-test-metrics.py"
+python "/app/docker/run/upload-test-metrics.py"

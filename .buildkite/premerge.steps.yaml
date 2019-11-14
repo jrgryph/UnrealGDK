@@ -38,6 +38,17 @@ common: &common
 # These are then relied on to have stable names by other things, so once named, please beware renaming has consequences.
 
 steps:
+
+  - label: "TEMP DEBUG STEP: upload test summary artifact"
+    commands: "powershell ./ci/upload-fake-test-summary.ps1"
+    <<: *common
+
+  - label: "TEMP DEBUG STEP: upload test metrics to GCS"
+    command: "ci/docker/run/run-ci.sh"
+    <<: *script_runner
+
+  - wait
+
   - label: "enforce-version-restrictions"
     command: "ci/check-version-file.sh"
     <<: *script_runner
@@ -66,7 +77,7 @@ steps:
     continue_on_failure: true
 
   - label: "upload-test-metrics"
-    command: "ci/upload-test-metrics.sh"
+    command: "ci/docker/run/run-ci.sh"
     <<: *script_runner
 
   - label: "slack-notify"
