@@ -14,7 +14,7 @@ docker build \
     .
 
 docker run \
-  --e="BUILDKITE_BUILD_ID=${BUILDKITE_BUILD_ID}" \
+  -e="BUILDKITE_BUILD_ID=${BUILDKITE_BUILD_ID}" \
   --volume="/usr/local/bin/imp-ci:/usr/local/bin/imp-ci" \
   --volume="/usr/bin/buildkite-agent:/usr/bin/buildkite-agent" \
   -w="/app" \
