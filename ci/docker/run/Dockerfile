@@ -6,7 +6,7 @@ RUN pip install --upgrade google-cloud-bigquery
 WORKDIR /app
 COPY . /app
 
-ENV PATH="/app:${PATH}"
+# extend path to get access to imp-ci
+ENV PATH="/usr/local/bin:${PATH}"
 
-#chmod all the things.
 RUN chmod +x /app/docker/run/upload-test-metrics.sh
