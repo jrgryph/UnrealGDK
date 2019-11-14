@@ -15,6 +15,7 @@ docker build \
 
 docker run \
   --volume="/usr/local/bin/imp-ci:/usr/local/bin/imp-ci" \
+  --volume="/usr/bin/buildkite-agent:/usr/bin/buildkite-agent" \
   -w="/app" \
   run \
   /app/docker/run/upload-test-metrics.sh
