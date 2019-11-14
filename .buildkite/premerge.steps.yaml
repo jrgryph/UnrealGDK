@@ -42,7 +42,9 @@ steps:
   - label: "TEMP DEBUG STEP: upload test summary artifact"
     commands: "powershell ./ci/upload-fake-test-summary.ps1"
     <<: *common
-
+  
+  - wait
+  
   - label: "TEMP DEBUG STEP: upload test metrics to GCS"
     command: "ci/docker/run/run-ci.sh"
     <<: *script_runner
