@@ -6,12 +6,12 @@ cd "$(dirname "${0}")/../../"
 
 set -e -u -o pipefail
 
-pushd "$(dirname "${0}")/../../"
-  docker build \
-      -t run \
-      -f docker/run/Dockerfile \
-      .
-popd
+pwd
+
+docker build \
+    -t run \
+    -f docker/run/Dockerfile \
+    .
 
 docker run \
   --volume="/usr/local/bin/imp-ci:/usr/local/bin/imp-ci" \
