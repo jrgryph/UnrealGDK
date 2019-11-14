@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Fetch the test summary artifacts uploaded earlier
-mkdir "ci/test_summaries"
-buildkite-agent artifact download "*test_summary*.json" "ci/test_summaries"
+mkdir "./test_summaries"
+buildkite-agent artifact download "*test_summary*.json" "./test_summaries"
 
 export GOOGLE_APPLICATION_CREDENTIALS="$(mktemp)"
 

@@ -18,7 +18,7 @@ def parse_json(file_path):
     with open(file_path) as json_file:
         return json.load(json_file)
 
-rows_to_insert = [parse_json(summary_file) for summary_file in glob.glob("ci/test_summaries/*")]
+rows_to_insert = [parse_json(summary_file) for summary_file in glob.glob("./test_summaries/*")]
 
 # Upload rows
 errors = client.insert_rows(table, rows_to_insert)
