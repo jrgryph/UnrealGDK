@@ -330,6 +330,11 @@ void USpatialReceiver::HandleActorAuthority(const Worker_AuthorityChangeOp& Op)
 		return;
 	}
 
+	if (VirtualWorkerTranslator)
+	{
+		VirtualWorkerTranslator->AuthorityChanged(Op);
+	}
+
 	if (LoadBalanceEnforcer)
 	{
 		LoadBalanceEnforcer->AuthorityChanged(Op);
@@ -1161,7 +1166,7 @@ void USpatialReceiver::OnComponentUpdate(const Worker_ComponentUpdateOp& Op)
 			check(LoadBalanceEnforcer);
 			LoadBalanceEnforcer->OnAuthorityIntentComponentUpdated(Op);
 		}
-		break;
+		return;
 	case SpatialConstants::VIRTUAL_WORKER_TRANSLATION_COMPONENT_ID:
 		if (VirtualWorkerTranslator != nullptr)
 		{
