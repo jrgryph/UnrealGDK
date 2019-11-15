@@ -66,7 +66,7 @@ struct EditorWorkerController
 
 	FProcHandle ReplaceWorker(const FString& OldWorker, const FString& NewWorker)
 	{
-		const FString CmdExecutable = TEXT("spatial.exe");
+		const FString CmdExecutable = TEXT("spatial");
 
 		const FString CmdArgs = FString::Printf(
 			TEXT("local worker replace "
