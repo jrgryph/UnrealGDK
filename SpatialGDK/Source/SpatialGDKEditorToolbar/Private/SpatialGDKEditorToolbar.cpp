@@ -73,6 +73,7 @@ void FSpatialGDKEditorToolbarModule::StartupModule()
 	FSpatialGDKServicesModule& GDKServices = FModuleManager::GetModuleChecked<FSpatialGDKServicesModule>("SpatialGDKServices");
 	LocalDeploymentManager = GDKServices.GetLocalDeploymentManager();
 	LocalDeploymentManager->SetAutoDeploy(GetDefault<USpatialGDKEditorSettings>()->bAutoStartLocalDeployment);
+	LocalDeploymentManager->SetInChina(GetDefault<USpatialGDKEditorSettings>()->IsRunningInChina());
 
 	// Bind the play button delegate to starting a local spatial deployment.
 	if (!UEditorEngine::TryStartSpatialDeployment.IsBound() && GetDefault<USpatialGDKEditorSettings>()->bAutoStartLocalDeployment)
@@ -613,7 +614,7 @@ void FSpatialGDKEditorToolbarModule::StopSpatialDeploymentButtonClicked()
 void FSpatialGDKEditorToolbarModule::LaunchInspectorWebpageButtonClicked()
 {
 	FString WebError;
-	FPlatformProcess::LaunchURL(TEXT("http://localhost:21000/inspector"), TEXT(""), &WebError);
+	FPlatformProcess::LaunchURL(TEXT("http://localhost:31000/inspector"), TEXT(""), &WebError);
 	if (!WebError.IsEmpty())
 	{
 		FNotificationInfo Info(FText::FromString(WebError));
